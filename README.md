@@ -2,7 +2,7 @@
 
 Un site statique qui appelle les 23 opérations de l'API de `paragone` : triage des leads, corpus scanné, statistiques du juge, lancement des travaux, référentiel.
 
-Le travail dans ce repo est celui d'une IA est n'est présent que pour offrir une vue à l'outil `paragone`.
+Le travail dans ce repo est celui d'une IA et n'est présent que pour offrir une vue à l'outil `paragone`.
 
 ## Prérequis
 
