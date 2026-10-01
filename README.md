@@ -87,4 +87,3 @@ PARAGONE_API=http://127.0.0.1:7331 bun test
 - **Lignes du code décalées.** Les positions viennent de la base, pas du fichier actuel : un fichier modifié depuis le scan montre la mauvaise ligne. Relancer `paragone -a <dossier> -s`.
 - **Rien ne s'affiche après une copie.** Vérifier que `index.html`, `style.css`, `src/` et `vendor/` sont ensemble dans le même dossier.
 - **`Lancer le juge`** dépense des tokens et demande `JEV_API_KEY` côté `paragone` : sans elle, l'API répond 400 et la page l'affiche.
-# paragone-front
