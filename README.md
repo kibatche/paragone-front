@@ -2,7 +2,7 @@
 
 Un site statique qui appelle les 23 opérations de l'API de `paragone` : triage des leads, corpus scanné, statistiques du juge, lancement des travaux, référentiel.
 
-Le travail dans ce repo est celui d'une IA et n'est présent que pour offrir une vue à l'outil `paragone`.
+Le travail dans ce repo est celui d'une IA sur mes ordres et n'est présent que pour offrir une vue à l'outil `paragone`.
 
 ## Prérequis
 
@@ -49,6 +49,19 @@ Ouvrir la page avec `?api=http://127.0.0.1:7331` (la valeur est mémorisée par 
 ```bash
 paragone --serve --cors http://localhost:5173
 ```
+
+## Captures
+
+<img width="2501" height="949" alt="image" src="https://github.com/user-attachments/assets/0a967b9c-233f-41ed-9c6d-79d569cc6049" />
+
+<img width="1368" height="429" alt="image" src="https://github.com/user-attachments/assets/51304c71-64ad-4d9b-9d6a-3bf4f51824b8" />
+
+<img width="1368" height="1281" alt="image" src="https://github.com/user-attachments/assets/7f1c1e4b-ad90-4111-95f4-2ddc40487aeb" />
+
+<img width="1368" height="791" alt="image" src="https://github.com/user-attachments/assets/6acdb07f-5586-48f6-b0eb-e68948590acb" />
+
+<img width="1368" height="1283" alt="image" src="https://github.com/user-attachments/assets/8db5eb98-5f5b-4475-bef4-f43e3252bcfb" />
+
 
 ## Tests
 
