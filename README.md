@@ -2,6 +2,8 @@
 
 Un site statique qui appelle les 23 opérations de l'API de `paragone` : triage des leads, corpus scanné, statistiques du juge, lancement des travaux, référentiel.
 
+Le travail dans ce repo est celui d'une IA est n'est présent que pour offrir une vue à l'outil `paragone`.
+
 ## Prérequis
 
 - `paragone` avec une base `.paragone/findings.db` dans le dossier d'où il se lance.
@@ -13,13 +15,13 @@ Un site statique qui appelle les 23 opérations de l'API de `paragone` : triage 
 Copier le contenu de `public/` dans le dossier public de `paragone` :
 
 ```bash
-cp -r ~/Projects/paragone-front/public/. ~/Projects/paragone/srcs/api/public/
+cp -r paragone-front/public/. paragone/srcs/api/public/
 ```
 
 Ou ne rien copier et le désigner au lancement :
 
 ```bash
-paragone --serve --public ~/Projects/paragone-front/public
+paragone --serve --public paragone-front/public
 ```
 
 ## Usage
