@@ -21,7 +21,7 @@ import {
   section,
 } from "../common/widgets.js";
 import { buildCodeView } from "./code_view.js";
-import { codeSteps } from "./code_steps.js";
+import { codeSteps, isSanitized, originLines, sanitizerLabel } from "./code_steps.js";
 import { SLOT_LABELS, SOURCE_KIND, UNJUDGED } from "./constants.js";
 import { humanBadge } from "./queue.js";
 
@@ -135,6 +135,7 @@ function originNode(finding, dossier, onStep) {
   const classes = ["origin"];
   if (isSource) classes.push("source");
   else if (finding.kind !== SOURCE_KIND) classes.push("stop");
+  if (isSanitized(finding)) classes.push("sanitized");
   if (finding.derivedFrom !== undefined) classes.push("derived");
   const line = finding.loc?.start?.line;
   const stopLegend = dossier?.endKindLegend?.[finding.kind];
@@ -146,6 +147,13 @@ function originNode(finding, dossier, onStep) {
       { className: "origin-head" },
       el("span", { className: "rank", textContent: `${finding.id}.` }),
       isSource ? el("span", { className: "src", textContent: finding.knownSource }) : "",
+      isSanitized(finding)
+        ? el("span", {
+            className: "san",
+            textContent: sanitizerLabel(finding),
+            title: "la valeur traverse cet appel : un désinfectant, pas forcément adapté au sink",
+          })
+        : "",
       finding.derivedFrom !== undefined
         ? el("span", { className: "faint", textContent: `dérivée de n°${finding.derivedFrom}` })
         : "",
@@ -385,8 +393,8 @@ export function renderSource(handle, triage) {
     handle.codeSlot.replaceChildren(el("div", { className: "muted", textContent: "Chargement du fichier…" }));
     return;
   }
-  const originLines = new Set((lead.lead.taint?.findings ?? []).map((f) => f.loc?.start?.line).filter(Boolean));
-  const view = buildCodeView(source, originLines, codeSteps(lead), () => api.openInEditor(lead.id));
+  const lines = originLines(lead.lead.taint?.findings ?? []);
+  const view = buildCodeView(source, lines, codeSteps(lead), () => api.openInEditor(lead.id));
   handle.reveal.showStep = view.showStep;
   handle.codeView = view;
   handle.codeSlot.replaceChildren(view.wrap);

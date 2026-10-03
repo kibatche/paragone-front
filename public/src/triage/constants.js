@@ -113,6 +113,9 @@ export const UNJUDGED = "UNJUDGED";
 /** Fin de descente du taint qui continue : au-delà, la chaîne s'arrête sur une source ou un arrêt. */
 export const SOURCE_KIND = "INTERNAL";
 
+/** Libellé d'un nœud de teinte qui traverse une méthode de désinfection (`finding.sanitizeMethod`). */
+export const SANITIZER_LABEL = "désinfection";
+
 export const NAVIGATION_KEYS = {
   j: { name: "next" },
   k: { name: "previous" },

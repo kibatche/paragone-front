@@ -27,7 +27,8 @@ function highlightedHtml(slice) {
 
 /**
  * @param source `{ file, targetLine, text }` rendu par `/api/source`
- * @param marked numéros de ligne à marquer (origines du taint)
+ * @param marked `{ origin, sanitized }`, rendu par `originLines` : lignes des origines du taint, et parmi
+ *        elles celles des nœuds désinfectants
  * @param steps `[{ label, span }]` : le sink, puis les origines
  * @param onOpenEditor ouvre le fichier dans l'éditeur local ; rend une promesse
  * @return `{ wrap, reveal(line), showStep(index), step(delta), center(), collapse() }`
@@ -44,7 +45,8 @@ export function buildCodeView(source, marked, steps, onOpenEditor) {
 
   const lineClass = (number) => {
     if (number === source.targetLine) return "cline target";
-    return marked.has(number) ? "cline mark" : "cline";
+    if (marked.sanitized.has(number)) return "cline mark sanitized";
+    return marked.origin.has(number) ? "cline mark" : "cline";
   };
 
   function stepMark(number) {

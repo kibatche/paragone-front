@@ -1,10 +1,21 @@
 /**
  * @author [A likely boring stuff made by] Shevek
  * @desc code_steps.js — Les étapes que la vue code parcourt pour un lead : le sink, puis les origines du
- *       taint dans l'ordre où le dossier les liste. Fonctions pures.
+ *       taint dans l'ordre où le dossier les liste, et les lignes à marquer. Dit aussi si un nœud traverse
+ *       une méthode de désinfection. Fonctions pures.
  */
 
-import { SOURCE_KIND } from "./constants.js";
+import { SANITIZER_LABEL, SOURCE_KIND } from "./constants.js";
+
+/** Le nœud traverse une méthode de désinfection : `sanitizeMethod` est absent ou vide sinon. */
+export function isSanitized(finding) {
+  return Boolean(finding.sanitizeMethod);
+}
+
+/** Libellé court d'un nœud désinfectant : « désinfection : sanitize ». */
+export function sanitizerLabel(finding) {
+  return `${SANITIZER_LABEL} : ${finding.sanitizeMethod}`;
+}
 
 /**
  * Plage du texte du match à partir de sa position de départ. Le texte peut couvrir plusieurs lignes.
@@ -24,7 +35,24 @@ function originSpan(finding) {
 
 function originLabel(finding) {
   if (finding.kind === SOURCE_KIND && finding.knownSource) return finding.knownSource;
+  if (isSanitized(finding)) return sanitizerLabel(finding);
   return (finding.text ?? "").split("\n")[0].trim() || finding.kind;
+}
+
+/**
+ * @param findings les origines du taint
+ * @return `{ origin, sanitized }` : les numéros de ligne des origines, et parmi eux ceux des nœuds désinfectants
+ */
+export function originLines(findings) {
+  const origin = new Set();
+  const sanitized = new Set();
+  for (const finding of findings) {
+    const line = finding.loc?.start?.line;
+    if (!line) continue;
+    origin.add(line);
+    if (isSanitized(finding)) sanitized.add(line);
+  }
+  return { origin, sanitized };
 }
 
 /**

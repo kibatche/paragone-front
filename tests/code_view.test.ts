@@ -13,7 +13,7 @@ import {
   visibleRange,
   visualColumn,
 } from "../public/src/triage/code_geometry.js";
-import { codeSteps, matchSpan, stepCaption } from "../public/src/triage/code_steps.js";
+import { codeSteps, matchSpan, originLines, stepCaption } from "../public/src/triage/code_steps.js";
 import { CODE_BUFFER, LINE_HEIGHT_PX } from "../public/src/triage/constants.js";
 
 describe("fenêtre visible", () => {
@@ -96,6 +96,40 @@ describe("étapes du taint", () => {
 
   test("un lead sans taint (inventaire) n'a que le sink", () => {
     expect(codeSteps({ line: 1, column: 0, match_text: "a", lead: {} })).toHaveLength(1);
+  });
+
+  test("un nœud désinfectant nomme sa méthode dans son libellé, une source garde le sien", () => {
+    const sanitizing = {
+      line: 10,
+      column: 4,
+      match_text: "el.innerHTML = x",
+      lead: {
+        taint: {
+          findings: [
+            { kind: "INTERNAL", sanitizeMethod: "sanitize", text: "y.A.sanitize(x)", loc: null },
+            { kind: "INTERNAL", knownSource: "location Read", sanitizeMethod: "escape", loc: null },
+            { kind: "UNBOUND", sanitizeMethod: "", text: "Blob", loc: null },
+          ],
+        },
+      },
+    };
+    expect(codeSteps(sanitizing).map((s) => s.label)).toEqual([
+      "sink",
+      "désinfection : sanitize",
+      "location Read",
+      "Blob",
+    ]);
+  });
+
+  test("les lignes désinfectantes sont un sous-ensemble des lignes d'origine", () => {
+    const at = (line: number) => ({ start: { line, column: 0 }, end: { line, column: 5 } });
+    const lines = originLines([
+      { kind: "INTERNAL", sanitizeMethod: "sanitize", loc: at(7) },
+      { kind: "INTERNAL", knownSource: "location Read", sanitizeMethod: "", loc: at(3) },
+      { kind: "UNBOUND", loc: null },
+    ]);
+    expect([...lines.origin].sort()).toEqual([3, 7]);
+    expect([...lines.sanitized]).toEqual([7]);
   });
 
   test("un match sur plusieurs lignes se termine sur la dernière", () => {

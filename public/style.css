@@ -755,6 +755,10 @@ pre.raw {
 .origin.stop {
   border-left-color: var(--mustard);
 }
+.origin.sanitized {
+  border-left-color: var(--glacier);
+  border-left-width: 6px;
+}
 .origin.derived {
   margin-left: 18px;
 }
@@ -769,6 +773,12 @@ pre.raw {
 }
 .src {
   color: var(--khaki);
+  font-weight: 700;
+}
+.san {
+  padding: 0 8px;
+  background: var(--glacier);
+  color: var(--on-accent);
   font-weight: 700;
 }
 .linelink {
@@ -940,6 +950,9 @@ summary {
 .cline.mark .ln {
   background: var(--khaki);
   color: var(--on-accent);
+}
+.cline.mark.sanitized .ln {
+  background: var(--glacier);
 }
 .step-hl {
   position: absolute;
