@@ -8,7 +8,7 @@ import * as api from "../common/api.js";
 import { FILTER_DEBOUNCE_MS } from "../common/constants.js";
 import { clear, debounce, el } from "../common/dom.js";
 import { clsTag, errorMessage, select } from "../common/widgets.js";
-import { HELP, HUMAN_LABELS, KEYS_HELP } from "./constants.js";
+import { IMPACT_MODE } from "./constants.js";
 import { renderDossier, renderSource } from "./dossier.js";
 import { keyAction } from "./keys.js";
 import { markSelected, queueItem, removeRow, renderMasks, renderQueueTail, replaceRow } from "./queue.js";
@@ -16,9 +16,9 @@ import { createTriage, filtersFromParams } from "./state.js";
 
 const toOptions = (rows) => rows.map(({ k, n }) => ({ value: k, label: `${k} (${n})` }));
 
-function keysHelp() {
+function keysHelp(mode) {
   const box = el("div", { className: "keys" });
-  for (const [first, second, text] of KEYS_HELP) {
+  for (const [first, second, text] of mode.keysHelp) {
     box.append(
       el("kbd", { textContent: first }),
       second ? el("kbd", { textContent: second }) : "",
@@ -29,7 +29,7 @@ function keysHelp() {
   return box;
 }
 
-function skeleton() {
+function skeleton(mode) {
   return {
     counters: el("div", { className: "counters" }),
     search: el("input", { type: "search", placeholder: "rechercher : chemin, match, texte reconstruit…  ( / )" }),
@@ -40,7 +40,7 @@ function skeleton() {
     dossier: el(
       "div",
       { className: "dossier" },
-      el("div", { className: "placeholder" }, HELP, el("br"), el("br"), keysHelp()),
+      el("div", { className: "placeholder" }, mode.help, el("br"), el("br"), keysHelp(mode)),
     ),
   };
 }
@@ -57,7 +57,7 @@ function renderCounters(ui, summary) {
   );
 }
 
-function renderChips(ui, triage, summary) {
+function renderChips(ui, triage, summary, classes) {
   const chip = (value, content, count) => {
     const on = triage.state.filters.class === value;
     return el(
@@ -66,7 +66,7 @@ function renderChips(ui, triage, summary) {
         className: `chip${on ? " on" : ""}`,
         onclick: () => {
           triage.setFilter("class", value).catch(console.error);
-          renderChips(ui, triage, summary);
+          renderChips(ui, triage, summary, classes);
         },
       },
       content,
@@ -74,7 +74,7 @@ function renderChips(ui, triage, summary) {
     );
   };
   clear(ui.chips).append(chip("", "toutes"));
-  for (const { k, n } of summary.byClass) ui.chips.append(chip(k, clsTag(k), n));
+  for (const { k, n } of summary.byClass.filter(({ k }) => classes.includes(k))) ui.chips.append(chip(k, clsTag(k), n));
 }
 
 function fillSelects(ui, triage, summary, vocabulary) {
@@ -83,20 +83,21 @@ function fillSelects(ui, triage, summary, vocabulary) {
     field.addEventListener("change", () => triage.setFilter(key, field.value).catch(console.error));
     return field;
   };
+  const { mode } = triage;
+  const human = make(
+    "human",
+    "mon verdict",
+    [...mode.decisions.map((d) => d.score), ...mode.otherScores].map((s) => ({ value: s, label: mode.labels[s] })),
+  );
+  if (!mode.isJudged) {
+    clear(ui.selects).append(human);
+    return;
+  }
   clear(ui.selects).append(
     make("analyzer", "analyzer", toOptions(summary.byAnalyzer)),
     make("verdict", "verdict du taint", toOptions(summary.byVerdict)),
     make("score", "score du juge", toOptions(summary.byAgentScore)),
-    make(
-      "human",
-      "mon verdict",
-      vocabulary.humanScores.map((s) => ({ value: s, label: HUMAN_LABELS[s] ?? s })),
-    ),
-    make(
-      "kind",
-      "nature",
-      vocabulary.leadKinds.map((k) => ({ value: k, label: k })),
-    ),
+    human,
     make("unjudged", "jugement", [{ value: "1", label: "non jugés seulement" }]),
   );
   const lang = select(
@@ -116,12 +117,13 @@ function isTypingTarget(target) {
 /**
  * @param container élément où la vue est montée
  * @param params paramètres de la route (`#/triage?class=XSS`)
+ * @param mode IMPACT_MODE (leads d'impact, jugés) ou INVENTORY_MODE (leads d'inventaire, consultés)
  * @return `{ destroy }`
  */
-export function mountTriage(container, params) {
-  const triage = createTriage();
+export function mountTriage(container, params, mode = IMPACT_MODE) {
+  const triage = createTriage(mode);
   Object.assign(triage.state.filters, filtersFromParams(params));
-  const ui = skeleton();
+  const ui = skeleton(mode);
   let shown = null;
   const fail = (error) => {
     console.error(error);
@@ -132,7 +134,7 @@ export function mountTriage(container, params) {
     el(
       "div",
       { className: "t-root" },
-      el("div", { className: "t-head" }, ui.counters),
+      mode.isJudged ? el("div", { className: "t-head" }, ui.counters) : "",
       el("div", { className: "t-filters" }, ui.search, ui.chips, ui.selects),
       ui.masks,
       el("div", { className: "t-main" }, ui.queue, ui.dossier),
@@ -180,6 +182,7 @@ export function mountTriage(container, params) {
     const action = keyAction(event.key, {
       isTyping: isTypingTarget(event.target),
       hasModifier: event.ctrlKey || event.metaKey || event.altKey,
+      decisions: mode.decisions,
     });
     if (!action) return;
     event.preventDefault();
@@ -191,6 +194,9 @@ export function mountTriage(container, params) {
       note: () => shown?.note.focus(),
       search: () => ui.search.focus(),
       blur: () => event.target.blur(),
+      collapse: () => shown?.codeView?.collapse(),
+      stepBack: () => shown?.codeView?.step(-1),
+      stepForward: () => shown?.codeView?.step(1),
     };
     Promise.resolve(run[action.name]()).catch(fail);
   };
@@ -199,7 +205,7 @@ export function mountTriage(container, params) {
   Promise.all([api.getSummary(), api.getVocabulary()])
     .then(([summary, vocabulary]) => {
       renderCounters(ui, summary);
-      renderChips(ui, triage, summary);
+      renderChips(ui, triage, summary, mode.classesOf(vocabulary));
       fillSelects(ui, triage, summary, vocabulary);
       return triage.reload();
     })

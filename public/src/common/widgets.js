@@ -26,10 +26,19 @@ export function holes(text, soft = false) {
   return box;
 }
 
-export function section(title, aside, ...content) {
+function sectionTitle(title, aside) {
   const heading = el("h3", {}, title);
   if (aside) heading.append(el("span", { className: "aside", textContent: aside }));
-  return el("section", { className: "d-section" }, heading, ...content);
+  return heading;
+}
+
+export function section(title, aside, ...content) {
+  return el("section", { className: "d-section" }, sectionTitle(title, aside), ...content);
+}
+
+/** Section repliée à l'ouverture : le titre est le résumé, un clic déplie le contenu. */
+export function foldedSection(title, aside, ...content) {
+  return el("details", { className: "d-section fold" }, el("summary", {}, sectionTitle(title, aside)), ...content);
 }
 
 /** Grille clé-valeur ; les paires sans valeur sont omises. */

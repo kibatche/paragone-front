@@ -5,6 +5,7 @@
 
 export const ROUTES = [
   { name: "triage", label: "Triage" },
+  { name: "inventories", label: "Inventaires" },
   { name: "corpus", label: "Corpus" },
   { name: "stats", label: "Statistiques" },
   { name: "jobs", label: "Travaux" },

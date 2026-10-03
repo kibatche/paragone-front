@@ -5,16 +5,17 @@
  */
 
 import { clear, el } from "../common/dom.js";
-import { HUMAN_LABELS, MASKS } from "./constants.js";
+import { HUMAN_LABELS } from "./constants.js";
 import { priorityOf, sinkText, where } from "../common/format.js";
 import { badge, clsTag } from "../common/widgets.js";
 
-export function humanBadge(score) {
-  return score ? badge(score, HUMAN_LABELS[score] ?? score) : "";
+export function humanBadge(score, labels = HUMAN_LABELS) {
+  return score ? badge(score, labels[score] ?? score) : "";
 }
 
 export function queueItem(triage, row) {
   const best = row.judgements?.[0] ?? null;
+  const isJudged = triage.mode.isJudged;
   const item = el(
     "div",
     {
@@ -24,7 +25,7 @@ export function queueItem(triage, row) {
     el(
       "div",
       { className: "q-top" },
-      badge(best?.score ?? null),
+      isJudged ? badge(best?.score ?? null) : "",
       ...row.classes.map(clsTag),
       el("span", { textContent: row.analyzer_name }),
       row.method ? el("span", { className: "mono", textContent: row.method }) : "",
@@ -34,9 +35,9 @@ export function queueItem(triage, row) {
     el(
       "div",
       { className: "q-bottom" },
-      badge(row.verdict),
+      isJudged ? badge(row.verdict) : "",
       el("span", { className: "where", textContent: where(row.file, row.line) }),
-      humanBadge(row.human_score),
+      humanBadge(row.human_score, triage.mode.labels),
     ),
   );
   item.dataset.id = row.id;
@@ -81,7 +82,7 @@ export function markSelected(root, id) {
 export function renderMasks(bar, triage) {
   const { state } = triage;
   clear(bar).append(el("span", { textContent: "Afficher aussi :" }));
-  for (const { key, label } of MASKS) {
+  for (const { key, label } of triage.mode.masks) {
     const box = el("input", {
       type: "checkbox",
       checked: Boolean(state.masks[key]),

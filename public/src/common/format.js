@@ -82,11 +82,3 @@ export function sinkText(row) {
 export function priorityOf(row) {
   return Math.min(3, Math.max(0, row.priority ?? 3));
 }
-
-/** Découpe un texte en lignes et rend celles d'une fenêtre autour de `target` (numérotées à partir de 1). */
-export function lineWindow(text, target, context) {
-  const lines = String(text ?? "").split("\n");
-  const from = Math.max(1, target - context);
-  const to = Math.min(lines.length, target + context);
-  return { total: lines.length, from, to, lines: lines.slice(from - 1, to) };
-}

@@ -5,9 +5,10 @@
 
 import { describe, expect, test } from "bun:test";
 import { buildQuery } from "../public/src/common/api.js";
-import { bestJudgement, distribution, lineWindow, priorityOf, splitHoles, where } from "../public/src/common/format.js";
+import { bestJudgement, distribution, priorityOf, splitHoles, where } from "../public/src/common/format.js";
 import { parseRoute } from "../public/src/shell/route.js";
 import { keyAction } from "../public/src/triage/keys.js";
+import { INVENTORY_DECISIONS } from "../public/src/triage/constants.js";
 import { filtersFromParams } from "../public/src/triage/state.js";
 
 describe("buildQuery", () => {
@@ -84,12 +85,6 @@ describe("emplacement", () => {
     expect(priorityOf({ priority: 9 })).toBe(3);
     expect(priorityOf({})).toBe(3);
   });
-
-  test("lineWindow borne la fenêtre au fichier", () => {
-    const text = Array.from({ length: 10 }, (_, i) => `l${i + 1}`).join("\n");
-    expect(lineWindow(text, 2, 3)).toMatchObject({ from: 1, to: 5, total: 10, lines: ["l1", "l2", "l3", "l4", "l5"] });
-    expect(lineWindow(text, 10, 2)).toMatchObject({ from: 8, to: 10 });
-  });
 });
 
 describe("keyAction", () => {
@@ -113,6 +108,23 @@ describe("keyAction", () => {
 
   test("avec un modificateur, aucun geste", () => {
     expect(keyAction("a", { hasModifier: true })).toBeNull();
+  });
+
+  test("dans l'inventaire, e n'escalade pas et i note", () => {
+    expect(keyAction("e", { decisions: INVENTORY_DECISIONS })).toBeNull();
+    expect(keyAction("i", { decisions: INVENTORY_DECISIONS })).toEqual({ name: "decide", score: "INFO" });
+    expect(keyAction("i")).toBeNull();
+  });
+
+  test("les flèches gauche et droite parcourent les étapes du code, sauf pendant la saisie", () => {
+    expect(keyAction("ArrowLeft")).toEqual({ name: "stepBack" });
+    expect(keyAction("ArrowRight")).toEqual({ name: "stepForward" });
+    expect(keyAction("ArrowRight", { isTyping: true })).toBeNull();
+    expect(keyAction("ArrowRight", { hasModifier: true })).toBeNull();
+  });
+
+  test("Échap referme la fenêtre de code", () => {
+    expect(keyAction("Escape")).toEqual({ name: "collapse" });
   });
 
   test("une touche inconnue n'est pas un geste", () => {

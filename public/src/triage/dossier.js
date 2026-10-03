@@ -13,6 +13,7 @@ import {
   clsTag,
   codeBlock,
   errorMessage,
+  foldedSection,
   holes,
   kvGrid,
   message,
@@ -20,7 +21,8 @@ import {
   section,
 } from "../common/widgets.js";
 import { buildCodeView } from "./code_view.js";
-import { DECISIONS, HUMAN_LABELS, OTHER_HUMAN_SCORES, SLOT_LABELS, SOURCE_KIND, UNJUDGED } from "./constants.js";
+import { codeSteps } from "./code_steps.js";
+import { SLOT_LABELS, SOURCE_KIND, UNJUDGED } from "./constants.js";
 import { humanBadge } from "./queue.js";
 
 /** Un jugement par classe d'impact du lead, y compris celles que le juge n'a pas encore vues. */
@@ -79,14 +81,8 @@ function judgeCard(judgement, classFrame) {
   );
 }
 
-function renderJudge(lead, dossier) {
-  if (lead.kind === "inventory") {
-    return section(
-      "Verdict du juge",
-      null,
-      el("div", { className: "card muted", textContent: "Lead d'inventaire : conservé pour la recon, jamais jugé." }),
-    );
-  }
+function renderJudge(lead, dossier, mode) {
+  if (!mode.isJudged) return "";
   const cards = judgementsOf(lead).map((j) =>
     judgeCard(
       j,
@@ -96,12 +92,12 @@ function renderJudge(lead, dossier) {
   return section("Verdict du juge", "signal de triage, pas une preuve", el("div", { className: "grid-2" }, ...cards));
 }
 
-function renderSink(item, dossier) {
+function renderSink(item, dossier, mode) {
   const taint = item.lead.taint;
   const slot = SLOT_LABELS[item.lead.slot?.kind]?.(item.lead.slot);
   const request = item.lead.request;
   return section(
-    "Le sink",
+    mode.sinkTitle,
     null,
     el(
       "div",
@@ -123,7 +119,9 @@ function renderSink(item, dossier) {
                   ? el("span", { className: "muted", textContent: ` ${dossier.verdictLegend}` })
                   : "",
               )
-            : el("span", { className: "muted", textContent: "pas de taint" }),
+            : mode.isJudged
+              ? el("span", { className: "muted", textContent: "pas de taint" })
+              : null,
         ],
         ["fichier", el("code", { textContent: `${item.file}:${item.line}:${item.column}` })],
       ]),
@@ -132,7 +130,7 @@ function renderSink(item, dossier) {
   );
 }
 
-function originNode(finding, dossier, onLine) {
+function originNode(finding, dossier, onStep) {
   const isSource = finding.kind === SOURCE_KIND && finding.knownSource;
   const classes = ["origin"];
   if (isSource) classes.push("source");
@@ -156,7 +154,7 @@ function originNode(finding, dossier, onLine) {
             className: "linelink",
             textContent: `ligne ${line}`,
             title: "voir dans le code",
-            onclick: () => onLine(line),
+            onclick: onStep,
           })
         : "",
     ),
@@ -186,7 +184,7 @@ function omittedText(omitted) {
     .join(" · ");
 }
 
-function renderOrigins(item, dossier, onLine) {
+function renderOrigins(item, dossier, onStep) {
   const taint = item.lead.taint;
   if (!taint) return "";
   if (!taint.findings.length) {
@@ -200,7 +198,11 @@ function renderOrigins(item, dossier, onLine) {
   return section(
     "D'où vient la valeur",
     "du sink vers la source",
-    el("ol", { className: "chain" }, ...taint.findings.map((f) => originNode(f, dossier, onLine))),
+    el(
+      "ol",
+      { className: "chain" },
+      ...taint.findings.map((f, index) => originNode(f, dossier, () => onStep(index + 1))),
+    ),
     omitted ? el("div", { className: "faint omitted", textContent: `Écartés : ${omitted}` }) : "",
   );
 }
@@ -215,11 +217,15 @@ function renderDuplicates(duplicates, triage) {
       el("span", { className: "where", textContent: where(row.file, row.line) }),
     ),
   );
-  return section("Doublons", `${duplicates.length} lead(s) identique(s)`, el("div", { className: "dups" }, ...rows));
+  return foldedSection(
+    "Doublons",
+    `${duplicates.length} lead(s) identique(s)`,
+    el("div", { className: "dups" }, ...rows),
+  );
 }
 
 function renderFrame(item, dossier) {
-  if (!dossier) return "";
+  if (!dossier?.classes.length) return "";
   const best = (cls) => item.judgements.find((j) => j.class === cls)?.score;
   const blocks = dossier.classes.map((frame) => {
     const scale = el("div", { className: "scale" });
@@ -283,7 +289,8 @@ function renderHead(item, triage, run, status) {
     value: item.human_note ?? "",
   });
   const decide = (score) => run(() => triage.decide(score, note.value.trim()));
-  const buttons = DECISIONS.map(({ score, key, label, icon, css }) =>
+  const { mode } = triage;
+  const buttons = mode.decisions.map(({ score, key, label, icon, css }) =>
     el(
       "button",
       { className: `decide ${css}`, onclick: () => decide(score) },
@@ -291,8 +298,8 @@ function renderHead(item, triage, run, status) {
       el("kbd", { textContent: key }),
     ),
   );
-  const others = OTHER_HUMAN_SCORES.map((score) =>
-    el("button", { className: "decide other", textContent: HUMAN_LABELS[score], onclick: () => decide(score) }),
+  const others = mode.otherScores.map((score) =>
+    el("button", { className: `decide other ${score}`, textContent: mode.labels[score], onclick: () => decide(score) }),
   );
   const tools = [
     el("button", {
@@ -304,14 +311,6 @@ function renderHead(item, triage, run, status) {
       textContent: "effacer ma revue",
       disabled: !item.human_score,
       onclick: () => run(() => triage.clearReview()),
-    }),
-    el("button", {
-      textContent: "ouvrir dans l'éditeur",
-      onclick: () =>
-        run(async () => {
-          await api.openInEditor(item.id);
-          status.replaceChildren(message("ok", "✓ ouvert dans l'éditeur local"));
-        }),
     }),
   ];
   return {
@@ -332,7 +331,7 @@ function renderHead(item, triage, run, status) {
         el("span", { textContent: item.analyzer }),
         el("span", { className: "sep", textContent: "·" }),
         el("span", { className: "mono", textContent: where(item.file, item.line) }),
-        humanBadge(item.human_score),
+        humanBadge(item.human_score, mode.labels),
       ),
       el("div", { className: "triage-bar" }, ...buttons, ...others),
       note,
@@ -356,20 +355,20 @@ export function renderDossier(root, triage) {
     });
   const head = renderHead(lead, triage, run, status);
   const codeSlot = el("div", { className: "code-slot" });
-  const reveal = { current: () => {} };
-  const handle = { note: head.note, codeSlot, reveal };
+  const reveal = { showStep: () => {} };
+  const handle = { note: head.note, codeSlot, reveal, codeView: null };
   root.replaceChildren(
     head.node,
     el(
       "div",
       { className: "d-body" },
-      renderJudge(lead, dossier),
-      renderSink(lead, dossier),
-      renderOrigins(lead, dossier, (line) => reveal.current(line)),
-      renderDuplicates(duplicates, triage),
+      renderJudge(lead, dossier, triage.mode),
+      renderSink(lead, dossier, triage.mode),
+      renderOrigins(lead, dossier, (index) => reveal.showStep(index)),
       section("Code", "fichier source", codeSlot),
       renderFrame(lead, dossier),
       renderRaw(lead, dossier),
+      renderDuplicates(duplicates, triage),
     ),
   );
   renderSource(handle, triage);
@@ -386,8 +385,10 @@ export function renderSource(handle, triage) {
     handle.codeSlot.replaceChildren(el("div", { className: "muted", textContent: "Chargement du fichier…" }));
     return;
   }
-  const originLines = (lead.lead.taint?.findings ?? []).map((f) => f.loc?.start?.line).filter(Boolean);
-  const view = buildCodeView(source, originLines);
-  handle.reveal.current = view.reveal;
-  handle.codeSlot.replaceChildren(view.node);
+  const originLines = new Set((lead.lead.taint?.findings ?? []).map((f) => f.loc?.start?.line).filter(Boolean));
+  const view = buildCodeView(source, originLines, codeSteps(lead), () => api.openInEditor(lead.id));
+  handle.reveal.showStep = view.showStep;
+  handle.codeView = view;
+  handle.codeSlot.replaceChildren(view.wrap);
+  view.center();
 }

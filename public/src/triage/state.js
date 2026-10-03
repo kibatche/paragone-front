@@ -5,7 +5,7 @@
  */
 
 import * as api from "../common/api.js";
-import { FILTER_KEYS, QUEUE_PAGE } from "./constants.js";
+import { FILTER_KEYS, IMPACT_MODE, QUEUE_PAGE } from "./constants.js";
 
 /** Filtres initiaux lus dans la chaîne de requête de la route (`#/triage?class=XSS`). */
 export function filtersFromParams(params) {
@@ -14,7 +14,8 @@ export function filtersFromParams(params) {
   return filters;
 }
 
-export function createTriage() {
+/** @param mode IMPACT_MODE ou INVENTORY_MODE : fixe la nature des leads de la file (`kind`). */
+export function createTriage(mode = IMPACT_MODE) {
   const listeners = new Set();
   const state = {
     filters: Object.fromEntries(FILTER_KEYS.map((key) => [key, ""])),
@@ -39,12 +40,9 @@ export function createTriage() {
     for (const listener of listeners) listener(name, detail);
   };
 
-  const queueParams = (offset) => ({
-    ...state.filters,
-    ...state.masks,
-    limit: QUEUE_PAGE,
-    offset,
-  });
+  const countParams = () => ({ ...state.filters, ...state.masks, kind: mode.kind });
+
+  const queueParams = (offset) => ({ ...countParams(), limit: QUEUE_PAGE, offset });
 
   const nextAfter = (id) => {
     const index = state.items.findIndex((row) => row.id === id);
@@ -61,7 +59,7 @@ export function createTriage() {
   }
 
   async function refreshCounts(mine = generation) {
-    const { total, hidden } = await api.countLeads({ ...state.filters, ...state.masks });
+    const { total, hidden } = await api.countLeads(countParams());
     if (mine !== generation) return;
     state.total = total;
     state.hidden = hidden;
@@ -196,6 +194,7 @@ export function createTriage() {
   }
 
   return {
+    mode,
     state,
     reload,
     loadMore,

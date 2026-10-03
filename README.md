@@ -30,9 +30,10 @@ Depuis le dossier qui contient `.paragone/` :
 paragone --serve
 ```
 
-Ouvrir `http://127.0.0.1:7331/`. Cinq pages, accessibles par la barre du haut :
+Ouvrir `http://127.0.0.1:7331/`. Six pages, accessibles par la barre du haut :
 
-- **Triage** : la file des leads, le dossier du lead ouvert (verdict du juge, sink, origines du taint, doublons, cadre de jugement, code source). Les gestes se font au clavier : `j`/`k` lead suivant ou précédent, `a` retenir, `r` rejeter, `e` escalader, `n` commentaire, `u` annuler le dernier tri, `/` rechercher.
+- **Triage** : la file des leads, le dossier du lead ouvert (verdict du juge, sink, origines du taint, doublons, cadre de jugement, code source). Les gestes se font au clavier : `j`/`k` lead suivant ou précédent, `a` retenir, `r` rejeter, `e` escalader, `n` commentaire, `u` annuler le dernier tri, `/` rechercher. Dans le dossier, la fenêtre de code parcourt le fichier entier : ◀ ▶ passent du sink aux origines du taint (la portion de l'étape est surlignée), « agrandir » la met en plein écran, `Échap` la referme.
+- **Inventaires** : les leads d'inventaire (chemins, hôtes, secrets, stockage, cookies), jamais jugés, dans la même vue que le triage. Décisions : `a` à creuser, `i` noter, `r` bruit, plus « dormant ». Pas d'escalade.
 - **Corpus** : fichiers scannés, puis matches des analyzers. Un clic sur un fichier ouvre ses matches.
 - **Statistiques** : répartitions de la base et coût du juge. Un clic sur une barre ouvre le triage filtré.
 - **Travaux** : configuration en mémoire, lancement du scan et du juge, suivi du travail en cours.

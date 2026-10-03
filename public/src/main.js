@@ -12,10 +12,12 @@ import { mountReference } from "./reference/view.js";
 import { mountStats } from "./stats/view.js";
 import { ROUTES } from "./shell/constants.js";
 import { parseRoute } from "./shell/route.js";
+import { INVENTORY_MODE } from "./triage/constants.js";
 import { mountTriage } from "./triage/view.js";
 
 const mounts = {
   triage: mountTriage,
+  inventories: (container, params) => mountTriage(container, params, INVENTORY_MODE),
   corpus: mountCorpus,
   stats: mountStats,
   jobs: mountJobs,
