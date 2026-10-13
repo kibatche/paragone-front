@@ -4,16 +4,24 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "lint": "eslint public tests",
-    "format": "prettier --write public/src public/index.html public/style.css tests"
+    "lint": "eslint public tests ui",
+    "format": "prettier --write public/src public/index.html public/style.css ui tests",
+    "build:standalone": "bun build ui/standalone/main.tsx --outfile=public/dist/app.js --format=esm --target=browser",
+    "build:panoptika": "sh -c 'bun build ui/hermes/plugin.tsx --outfile=\"${PANOPTIKA_PLUGIN_OUT:-$HOME/.hermes/plugins/panoptika/desktop/plugin.js}\" --format=esm --target=browser -e react -e react/jsx-runtime -e @hermes/plugin-sdk'"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/bun": "^1.3.14",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "eslint": "^10.11.0",
     "globals": "^17.12.0",
     "prettier": "3.9.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.0"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }
