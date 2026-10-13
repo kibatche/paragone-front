@@ -7,7 +7,7 @@
 import { createRoot } from "react-dom/client";
 import { makeApi, type Fetcher } from "../api/client";
 import { buildQuery } from "../api/query";
-import { ReferenceView } from "../views/Reference";
+import { App } from "./App";
 
 const fetcher: Fetcher = async (method, path, opts = {}) => {
   const url = `/api${path}${buildQuery(opts.query)}`;
@@ -25,4 +25,4 @@ const fetcher: Fetcher = async (method, path, opts = {}) => {
 const api = makeApi(fetcher);
 const root = document.getElementById("root");
 if (!root) throw new Error("standalone/main.tsx: #root introuvable dans la page hôte");
-createRoot(root).render(<ReferenceView api={api} />);
+createRoot(root).render(<App api={api} />);

@@ -58,9 +58,11 @@ export function ErrorMessage({ error }: { error: unknown }) {
 export function DataTable<T>({
   columns,
   rows,
+  onRow,
 }: {
   columns: { title: string; cell: (row: T) => ReactNode }[];
   rows: T[];
+  onRow?: (row: T) => void;
 }) {
   return (
     <table className="data">
@@ -73,7 +75,7 @@ export function DataTable<T>({
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={i}>
+          <tr key={i} className={onRow ? "pick" : undefined} onClick={onRow ? () => onRow(row) : undefined}>
             {columns.map((c) => (
               <td key={c.title}>{c.cell(row)}</td>
             ))}
@@ -81,5 +83,93 @@ export function DataTable<T>({
         ))}
       </tbody>
     </table>
+  );
+}
+
+export function Badge({ value, text }: { value: string | null | undefined; text?: string }) {
+  if (!value) return <span className="badge unjudged">—</span>;
+  return <span className={`badge ${value}`}>{text ?? value}</span>;
+}
+
+export function Tile({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="tile">
+      <b>{typeof value === "number" ? new Intl.NumberFormat("fr-FR").format(value) : value}</b>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+export type BarRow = { k: string; n: number };
+
+/** Liste de barres horizontales proportionnelles au plus grand compte -- port de `widgets.js::barList`. */
+export function BarList({ rows, onPick }: { rows: BarRow[]; onPick?: (key: string) => void }) {
+  if (!rows.length) return <div className="muted">Aucune donnée.</div>;
+  const top = Math.max(1, ...rows.map((row) => row.n));
+  return (
+    <div className="bars">
+      {rows.map(({ k, n }) => (
+        <div key={k} className={onPick ? "bar pick" : "bar"} onClick={onPick ? () => onPick(k) : undefined}>
+          <span className="bar-key">{k}</span>
+          <span className="bar-track">
+            <span className="fill" style={{ width: `${(n / top) * 100}%` }} />
+          </span>
+          <span className="bar-n">{new Intl.NumberFormat("fr-FR").format(n)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function Pager({
+  offset,
+  limit,
+  total,
+  shown,
+  onMove,
+}: {
+  offset: number;
+  limit: number;
+  total: number;
+  shown: number;
+  onMove: (offset: number) => void;
+}) {
+  const first = total === 0 ? 0 : offset + 1;
+  const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(n);
+  return (
+    <div className="pager">
+      <button type="button" disabled={offset === 0} onClick={() => onMove(Math.max(0, offset - limit))}>
+        ←
+      </button>
+      <span>
+        {fmt(first)}–{fmt(offset + shown)} sur {fmt(total)}
+      </span>
+      <button type="button" disabled={offset + limit >= total} onClick={() => onMove(offset + limit)}>
+        →
+      </button>
+    </div>
+  );
+}
+
+export function Select({
+  placeholder,
+  options,
+  value,
+  onChange,
+}: {
+  placeholder: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }

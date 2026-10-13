@@ -15,6 +15,8 @@ import { makeApi, type Fetcher, type ParagoneApi } from "../api/client";
 import { buildQuery } from "../api/query";
 import { skinCss } from "./skin.generated";
 import { ReferenceView } from "../views/Reference";
+import { StatsView } from "../views/Stats";
+import { CorpusView } from "../views/Corpus";
 
 type RestFn = (path: string, opts?: { method?: string; body?: unknown }) => Promise<unknown>;
 
@@ -117,18 +119,26 @@ function ApiExplorer({ rest, ns }: { rest: RestFn; ns: string }) {
 
 /** Tabs specific to the paragone brick. A brick with no entry here only gets lifecycle + the explorer (generic fallback) -- generalizing this mapping is explicitly out of scope until paragone itself runs end to end (Phase 5). */
 function ParagoneTabs({ api, rest, ns }: { api: ParagoneApi; rest: RestFn; ns: string }) {
-  const [tab, setTab] = useState<"reference" | "debug">("reference");
+  const [tab, setTab] = useState<"reference" | "stats" | "corpus" | "debug">("reference");
+  const tabs: { id: typeof tab; label: string }[] = [
+    { id: "reference", label: "Référentiel" },
+    { id: "stats", label: "Statistiques" },
+    { id: "corpus", label: "Corpus" },
+    { id: "debug", label: "Debug" },
+  ];
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2 border-b border-(--ui-stroke-secondary)">
-        <button type="button" className={tab === "reference" ? "underline" : ""} onClick={() => setTab("reference")}>
-          Référentiel
-        </button>
-        <button type="button" className={tab === "debug" ? "underline" : ""} onClick={() => setTab("debug")}>
-          Debug
-        </button>
+        {tabs.map((t) => (
+          <button key={t.id} type="button" className={tab === t.id ? "underline" : ""} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
       </div>
-      {tab === "reference" ? <ReferenceView api={api} /> : <ApiExplorer rest={rest} ns={ns} />}
+      {tab === "reference" ? <ReferenceView api={api} /> : null}
+      {tab === "stats" ? <StatsView api={api} /> : null}
+      {tab === "corpus" ? <CorpusView api={api} /> : null}
+      {tab === "debug" ? <ApiExplorer rest={rest} ns={ns} /> : null}
     </div>
   );
 }
