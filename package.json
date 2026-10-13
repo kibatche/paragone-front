@@ -7,7 +7,7 @@
     "lint": "eslint public tests ui",
     "format": "prettier --write public/src public/index.html public/style.css ui tests",
     "build:standalone": "bun build ui/standalone/main.tsx --outfile=public/dist/app.js --format=esm --target=browser",
-    "build:panoptika": "sh -c 'bun build ui/hermes/plugin.tsx --outfile=\"${PANOPTIKA_PLUGIN_OUT:-$HOME/.hermes/plugins/panoptika/desktop/plugin.js}\" --format=esm --target=browser -e react -e react/jsx-runtime -e @hermes/plugin-sdk'"
+    "build:panoptika": "sh -c 'bun run ui/hermes/build-skin.ts && bun build ui/hermes/plugin.tsx --outfile=\"${PANOPTIKA_PLUGIN_OUT:-$HOME/.hermes/plugins/panoptika/desktop/plugin.js}\" --format=esm --target=browser -e react -e react/jsx-runtime -e @hermes/plugin-sdk'"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

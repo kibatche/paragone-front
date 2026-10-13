@@ -13,6 +13,7 @@ import { ROUTES_AREA, SIDEBAR_NAV_AREA } from "@hermes/plugin-sdk";
 import { useEffect, useState } from "react";
 import { makeApi, type Fetcher, type ParagoneApi } from "../api/client";
 import { buildQuery } from "../api/query";
+import { skinCss } from "./skin.generated";
 import { ReferenceView } from "../views/Reference";
 
 type RestFn = (path: string, opts?: { method?: string; body?: unknown }) => Promise<unknown>;
@@ -226,7 +227,8 @@ function PanoptikaPage({ rest }: { rest: RestFn }) {
   const brick = bricks && selected ? (bricks.find((b) => b.id === selected) ?? null) : null;
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4 text-sm">
+    <div className="paragone-skin flex h-full flex-col gap-3 p-4 text-sm">
+      <style>{skinCss}</style>
       <div className="font-medium text-base">Pentest / Bug Bounty / Recherche</div>
       {error ? <pre className="text-red-400 whitespace-pre-wrap">{String(error)}</pre> : null}
       {!bricks ? (
