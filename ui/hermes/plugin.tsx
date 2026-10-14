@@ -139,7 +139,7 @@ function ParagoneTabs({ api, rest, ns }: { api: ParagoneApi; rest: RestFn; ns: s
     { id: "debug", label: "Debug" },
   ];
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 h-full min-h-0">
       <div className="flex gap-2 border-b border-(--ui-stroke-secondary)">
         {tabs.map((t) => (
           <button key={t.id} type="button" className={tab === t.id ? "underline" : ""} onClick={() => setTab(t.id)}>
@@ -147,12 +147,14 @@ function ParagoneTabs({ api, rest, ns }: { api: ParagoneApi; rest: RestFn; ns: s
           </button>
         ))}
       </div>
-      {tab === "reference" ? <ReferenceView api={api} /> : null}
-      {tab === "stats" ? <StatsView api={api} /> : null}
-      {tab === "corpus" ? <CorpusView api={api} /> : null}
-      {tab === "triage" ? <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} /> : null}
-      {tab === "inventory" ? <TriageView api={api} vocabulary={vocabulary} mode={INVENTORY_MODE} /> : null}
-      {tab === "debug" ? <ApiExplorer rest={rest} ns={ns} /> : null}
+      <div className={`flex-1 min-h-0 ${tab === "triage" || tab === "inventory" ? "" : "overflow-auto"}`}>
+        {tab === "reference" ? <ReferenceView api={api} /> : null}
+        {tab === "stats" ? <StatsView api={api} /> : null}
+        {tab === "corpus" ? <CorpusView api={api} /> : null}
+        {tab === "debug" ? <ApiExplorer rest={rest} ns={ns} /> : null}
+        {tab === "triage" ? <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} /> : null}
+        {tab === "inventory" ? <TriageView api={api} vocabulary={vocabulary} mode={INVENTORY_MODE} /> : null}
+      </div>
     </div>
   );
 }
@@ -203,7 +205,7 @@ function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
   const api = useMemo(() => makeApi(fetcherFor(rest, ns)), [rest, ns]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 h-full min-h-0">
       <div className="font-medium">{brick.label}</div>
       <div className="flex items-center gap-2 text-(--ui-text-tertiary)">
         <span>statut : </span>
@@ -221,7 +223,9 @@ function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
         </button>
       </div>
       {error ? <pre className="text-red-400 whitespace-pre-wrap">{String(error)}</pre> : null}
-      {brick.id === "paragone" ? <ParagoneTabs api={api} rest={rest} ns={ns} /> : <ApiExplorer rest={rest} ns={ns} />}
+      <div className="flex-1 min-h-0">
+        {brick.id === "paragone" ? <ParagoneTabs api={api} rest={rest} ns={ns} /> : <ApiExplorer rest={rest} ns={ns} />}
+      </div>
     </div>
   );
 }
@@ -260,7 +264,7 @@ function PanoptikaPage({ rest }: { rest: RestFn }) {
       ) : (
         <div className="flex gap-4 flex-1 min-h-0">
           <BrickMenu bricks={bricks} selected={selected} onSelect={setSelected} />
-          <div className="flex-1 overflow-auto">{brick ? <BrickDetail rest={rest} brick={brick} /> : null}</div>
+          <div className="flex-1 min-h-0">{brick ? <BrickDetail rest={rest} brick={brick} /> : null}</div>
         </div>
       )}
     </div>
