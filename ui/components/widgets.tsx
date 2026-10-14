@@ -8,7 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { splitHoles } from "../format";
 import { highlightJs } from "../triage/highlight";
 
-export function Section({ title, aside, children }: { title: string; aside?: string | null; children: ReactNode }) {
+export function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
     <section className="d-section">
       <h3>

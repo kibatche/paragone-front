@@ -35,6 +35,7 @@ export function CodeView({
   steps,
   onOpenEditor,
   handleRef,
+  onStepChange,
 }: {
   text: string;
   targetLine: number;
@@ -43,6 +44,9 @@ export function CodeView({
   onOpenEditor: () => Promise<unknown>;
   /** La vue expose `reveal`/`showStep`/`step`/`center`/`collapse` à son parent (clic sur une origine, touches ← →, bouton sink) -- un ref plutôt qu'un forwardRef pour rester un simple composant fonction. */
   handleRef: React.MutableRefObject<CodeViewHandle | null>;
+  /** Notifie le parent (Dossier) de l'étape courante -- pour que le nœud affiché dans
+   * "D'où vient la valeur" suive le code plutôt que de vivre dans un état séparé. */
+  onStepChange?: (index: number) => void;
 }) {
   const lines = useRef(text.split(/\r?\n/)).current;
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -84,6 +88,7 @@ export function CodeView({
   const showStep = (index: number) => {
     if (index < 0 || index >= steps.length) return;
     setCurrentStep(index);
+    onStepChange?.(index);
     const line = steps[index].span?.[0];
     if (line) {
       if (!expanded) viewportRef.current?.scrollIntoView({ block: "nearest" });
@@ -107,6 +112,7 @@ export function CodeView({
   useEffect(() => {
     goTo(steps[0]?.span?.[0] ?? targetLine);
     setCurrentStep(0);
+    onStepChange?.(0);
   }, [text]);
 
   const lineClass = (number: number) => {

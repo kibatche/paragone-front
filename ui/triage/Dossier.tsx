@@ -4,7 +4,7 @@
  * origines de la valeur, doublons, cadre de jugement, code source, matière
  * brute. Rend ce que `useTriage` détient.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { JUDGE_SCORES, distribution, optionsText, percent, where } from "../format";
 import {
   Badge,
@@ -184,7 +184,21 @@ function omittedText(omitted: Record<string, number> | undefined): string {
     .join(" · ");
 }
 
-function RenderOrigins({ item, dossier, onStep }: { item: Lead; dossier: DossierData | null; onStep: (index: number) => void }) {
+function RenderOrigins({
+  item,
+  dossier,
+  onStep,
+  activeStep,
+  showAll,
+  onToggleAll,
+}: {
+  item: Lead;
+  dossier: DossierData | null;
+  onStep: (index: number) => void;
+  activeStep: number;
+  showAll: boolean;
+  onToggleAll: () => void;
+}) {
   const taint = item.lead.taint;
   if (!taint) return null;
   if (!taint.findings.length) {
@@ -195,13 +209,28 @@ function RenderOrigins({ item, dossier, onStep }: { item: Lead; dossier: Dossier
     );
   }
   const omitted = omittedText(taint.omitted);
+  const toggle = (
+    <button type="button" className="chain-toggle" onClick={onToggleAll}>
+      {showAll ? "◀ un seul nœud" : "voir toute la chaîne →"}
+    </button>
+  );
+  // activeStep suit la numérotation de CodeView (0 = sink, 1..n = origines) -- le nœud
+  // "courant" est donc activeStep-1 dans la liste des origines ; par défaut (sink, ou pas
+  // encore de pas franchi) on retombe sur le premier nœud teinté, pas sur rien.
+  const index = Math.min(Math.max(activeStep - 1, 0), taint.findings.length - 1);
   return (
-    <Section title="D'où vient la valeur" aside="du sink vers la source">
-      <ol className="chain">
-        {taint.findings.map((f, index) => (
-          <OriginNode key={f.id} finding={f} dossier={dossier} onStep={() => onStep(index + 1)} />
-        ))}
-      </ol>
+    <Section title="D'où vient la valeur" aside={toggle}>
+      {showAll ? (
+        <ol className="chain">
+          {taint.findings.map((f, i) => (
+            <OriginNode key={f.id} finding={f} dossier={dossier} onStep={() => onStep(i + 1)} />
+          ))}
+        </ol>
+      ) : (
+        <ol className="chain">
+          <OriginNode finding={taint.findings[index]} dossier={dossier} onStep={() => onStep(index + 1)} />
+        </ol>
+      )}
       {omitted ? <div className="faint omitted">Écartés : {omitted}</div> : null}
     </Section>
   );
@@ -305,6 +334,15 @@ export function Dossier({
 }) {
   const { lead, dossier, duplicates, source, sourceError, mode } = triage.state;
   const [status, setStatus] = useState<unknown>(null);
+  const [activeStep, setActiveStep] = useState(0);
+  const [showAllOrigins, setShowAllOrigins] = useState(false);
+
+  // Nouveau lead ouvert : repartir du nœud par défaut (le premier teinté), pas garder
+  // l'index ou le dépliage du lead précédent.
+  useEffect(() => {
+    setActiveStep(0);
+    setShowAllOrigins(false);
+  }, [lead?.id]);
 
   if (!lead) return null;
 
@@ -362,7 +400,14 @@ export function Dossier({
       <div className="d-body">
         <RenderJudge lead={lead} dossier={dossier} mode={mode} />
         <RenderSink item={lead} dossier={dossier} mode={mode} />
-        <RenderOrigins item={lead} dossier={dossier} onStep={reveal} />
+        <RenderOrigins
+          item={lead}
+          dossier={dossier}
+          onStep={reveal}
+          activeStep={activeStep}
+          showAll={showAllOrigins}
+          onToggleAll={() => setShowAllOrigins((v) => !v)}
+        />
         <Section title="Code" aside="fichier source">
           {sourceError ? (
             <Message kind="bad" text={`✗ ${(sourceError as ApiError as { detail?: string }).detail ?? String(sourceError)}`} />
@@ -376,6 +421,7 @@ export function Dossier({
               steps={steps}
               onOpenEditor={() => triage.openInEditor(lead.id)}
               handleRef={codeHandleRef}
+              onStepChange={setActiveStep}
             />
           )}
         </Section>
