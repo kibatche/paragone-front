@@ -1,3 +1,4 @@
 node_modules/
 public/dist/
+public/.paragone/
 ui/hermes/skin.generated.ts

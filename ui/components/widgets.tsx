@@ -4,7 +4,9 @@
  * nommage de classes CSS (le style.css de paragone-front reste la source de
  * vérité visuelle -- on ne la duplique pas ici).
  */
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { splitHoles } from "../format";
+import { highlightJs } from "../triage/highlight";
 
 export function Section({ title, aside, children }: { title: string; aside?: string | null; children: ReactNode }) {
   return (
@@ -15,6 +17,29 @@ export function Section({ title, aside, children }: { title: string; aside?: str
       </h3>
       {children}
     </section>
+  );
+}
+
+/** Section repliée à l'ouverture : le titre est le résumé, un clic déplie le contenu -- port de `foldedSection`. */
+export function FoldedSection({
+  title,
+  aside,
+  children,
+}: {
+  title: string;
+  aside?: string | null;
+  children: ReactNode;
+}) {
+  return (
+    <details className="d-section fold">
+      <summary>
+        <h3>
+          {title}
+          {aside ? <span className="aside"> {aside}</span> : null}
+        </h3>
+      </summary>
+      {children}
+    </details>
   );
 }
 
@@ -171,5 +196,56 @@ export function Select({
         </option>
       ))}
     </select>
+  );
+}
+
+/** Texte dont les trous (`EXPR`, `EXPR#n`) ressortent -- port de `widgets.js::holes`. */
+export function Holes({ text, soft }: { text: string; soft?: boolean }) {
+  return (
+    <span>
+      {splitHoles(text).map((part, i) =>
+        part.hole ? (
+          <span key={i} className={soft ? "hole soft" : "hole"}>
+            {part.text}
+          </span>
+        ) : (
+          part.text
+        ),
+      )}
+    </span>
+  );
+}
+
+export function Message({ kind, text }: { kind: string; text: string }) {
+  return <p className={`msg ${kind}`}>{text}</p>;
+}
+
+/**
+ * Bloc de code -- port de `widgets.js::codeBlock`, coloré via Shiki
+ * (`highlightJs`, bundlée, styles en ligne). Pour un texte court (le match
+ * reconstruit) : pas de virtualisation nécessaire ici, voir
+ * `triage/CodeView.tsx` pour le fichier entier.
+ */
+export function CodeBlock({ code }: { code: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    highlightJs(code)
+      .then((h) => !cancelled && setHtml(h))
+      .catch(() => !cancelled && setHtml(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [code]);
+  if (html)
+    // Sûr : Shiki échappe tout le texte source en HTML avant d'émettre les
+    // <span> de coloration -- aucune chaîne du code scanné ne peut casser
+    // hors d'un nœud texte. Même garantie que `common/widgets.js::highlightedCode`
+    // (highlight.js) dans la version vanilla.
+    return <div className="carrier" dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <pre className="carrier">
+      <code className="language-javascript">{code}</code>
+    </pre>
   );
 }

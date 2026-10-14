@@ -10,13 +10,16 @@
  * `@hermes/plugin-sdk` externalisés (déjà fournis par l'hôte desktop).
  */
 import { ROUTES_AREA, SIDEBAR_NAV_AREA } from "@hermes/plugin-sdk";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { makeApi, type Fetcher, type ParagoneApi } from "../api/client";
 import { buildQuery } from "../api/query";
 import { skinCss } from "./skin.generated";
 import { ReferenceView } from "../views/Reference";
 import { StatsView } from "../views/Stats";
 import { CorpusView } from "../views/Corpus";
+import { TriageView } from "../views/Triage";
+import { IMPACT_MODE, INVENTORY_MODE } from "../triage/constants";
+import type { Vocabulary } from "../triage/types";
 
 type RestFn = (path: string, opts?: { method?: string; body?: unknown }) => Promise<unknown>;
 
@@ -117,13 +120,22 @@ function ApiExplorer({ rest, ns }: { rest: RestFn; ns: string }) {
   );
 }
 
-/** Tabs specific to the paragone brick. A brick with no entry here only gets lifecycle + the explorer (generic fallback) -- generalizing this mapping is explicitly out of scope until paragone itself runs end to end (Phase 5). */
+/** Tabs specific to the paragone brick. A brick with no entry here only gets lifecycle + the explorer (generic fallback) -- generalizing this mapping is explicitly out of scope until paragone itself runs end to end (Phase 5). Ordre et défaut : `public/src/shell/constants.js::ROUTES`/`DEFAULT_ROUTE` du front vanilla -- reflète le flow réel (triage d'abord), pas arbitraire. */
 function ParagoneTabs({ api, rest, ns }: { api: ParagoneApi; rest: RestFn; ns: string }) {
-  const [tab, setTab] = useState<"reference" | "stats" | "corpus" | "debug">("reference");
+  const [tab, setTab] = useState<"triage" | "inventory" | "corpus" | "stats" | "reference" | "debug">("triage");
+  const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
+  useEffect(() => {
+    api
+      .getVocabulary()
+      .then((v) => setVocabulary(v as Vocabulary))
+      .catch(() => setVocabulary(null));
+  }, [api]);
   const tabs: { id: typeof tab; label: string }[] = [
-    { id: "reference", label: "Référentiel" },
-    { id: "stats", label: "Statistiques" },
+    { id: "triage", label: "Triage" },
+    { id: "inventory", label: "Inventaires" },
     { id: "corpus", label: "Corpus" },
+    { id: "stats", label: "Statistiques" },
+    { id: "reference", label: "Référentiel" },
     { id: "debug", label: "Debug" },
   ];
   return (
@@ -138,6 +150,8 @@ function ParagoneTabs({ api, rest, ns }: { api: ParagoneApi; rest: RestFn; ns: s
       {tab === "reference" ? <ReferenceView api={api} /> : null}
       {tab === "stats" ? <StatsView api={api} /> : null}
       {tab === "corpus" ? <CorpusView api={api} /> : null}
+      {tab === "triage" ? <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} /> : null}
+      {tab === "inventory" ? <TriageView api={api} vocabulary={vocabulary} mode={INVENTORY_MODE} /> : null}
       {tab === "debug" ? <ApiExplorer rest={rest} ns={ns} /> : null}
     </div>
   );
@@ -186,7 +200,7 @@ function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
     }
   };
 
-  const api = makeApi(fetcherFor(rest, ns));
+  const api = useMemo(() => makeApi(fetcherFor(rest, ns)), [rest, ns]);
 
   return (
     <div className="flex flex-col gap-3">

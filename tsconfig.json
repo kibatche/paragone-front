@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowJs": false,
-    "types": ["react", "react-dom"]
+    "types": ["react", "react-dom", "bun"]
   },
   "include": ["ui"]
 }
