@@ -19,6 +19,7 @@ import { StatsView } from "../views/Stats";
 import { CorpusView } from "../views/Corpus";
 import { TriageView } from "../views/Triage";
 import { JobsView } from "../views/Jobs";
+import { FsBrowser } from "../components/FsBrowser";
 import { IMPACT_MODE, INVENTORY_MODE } from "../triage/constants";
 import type { Vocabulary } from "../triage/types";
 
@@ -136,7 +137,7 @@ function ParagoneTabs({
   onProjectChanged: () => void;
 }) {
   const [tab, setTab] = useState<
-    "project" | "triage" | "inventory" | "corpus" | "stats" | "reference" | "jobs" | "debug"
+    "project" | "jobs" | "triage" | "inventory" | "corpus" | "stats" | "reference" | "debug"
   >("triage");
   const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
   useEffect(() => {
@@ -147,12 +148,12 @@ function ParagoneTabs({
   }, [api]);
   const tabs: { id: typeof tab; label: string }[] = [
     { id: "project", label: "Projet" },
+    { id: "jobs", label: "Scan & Juge" },
     { id: "triage", label: "Triage" },
     { id: "inventory", label: "Inventaires" },
     { id: "corpus", label: "Corpus" },
     { id: "stats", label: "Statistiques" },
     { id: "reference", label: "Référentiel" },
-    { id: "jobs", label: "Travaux" },
     { id: "debug", label: "Debug" },
   ];
   return (
@@ -170,7 +171,7 @@ function ParagoneTabs({
         {tab === "stats" ? <StatsView api={api} /> : null}
         {tab === "corpus" ? <CorpusView api={api} /> : null}
         {tab === "debug" ? <ApiExplorer rest={rest} ns={ns} /> : null}
-        {tab === "jobs" ? <JobsView api={api} vocabulary={vocabulary} /> : null}
+        {tab === "jobs" ? <JobsView api={api} vocabulary={vocabulary} fsRest={rest} fsNs={ns} cwd={cwd} /> : null}
         {tab === "triage" ? <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} /> : null}
         {tab === "inventory" ? <TriageView api={api} vocabulary={vocabulary} mode={INVENTORY_MODE} /> : null}
       </div>
@@ -178,55 +179,23 @@ function ParagoneTabs({
   );
 }
 
-type FsEntry = { name: string; path: string; hasProject: boolean };
-type FsListing = { path: string; parent: string | null; hasProject: boolean; entries: FsEntry[] };
-
 /**
  * Onglet dédié (pas un bandeau permanent au-dessus des autres onglets) pour
- * ouvrir un projet existant ou en créer un nouveau. Navigateur de dossiers
- * server-driven (breadcrumbs + liste cliquable) plutôt qu'un champ texte à
- * taper -- et plutôt qu'une boîte de dialogue native Electron, qui n'existe
- * pas côté SDK plugin et ne fonctionnerait pas depuis un navigateur web :
- * un simple fetch + JSON marche identiquement dans les deux. Ouvrir et
+ * ouvrir un projet existant ou en créer un nouveau, via `FsBrowser` (filtré
+ * aux dossiers seulement -- un projet n'est jamais un fichier). Ouvrir et
  * Créer sont deux gestes distincts (pas une case à cocher) : Ouvrir n'est
  * possible que sur un dossier qui a déjà un projet (`.paragone/findings.db`),
  * Créer prend un nom de nouveau dossier dans le dossier parcouru.
  */
 function ProjectTab({ rest, ns, cwd, onChanged }: { rest: RestFn; ns: string; cwd?: string; onChanged: () => void }) {
-  const [browsePath, setBrowsePath] = useState<string | undefined>(cwd);
-  const [listing, setListing] = useState<FsListing | null>(null);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  useEffect(() => {
-    if (browsePath === undefined && cwd !== undefined) setBrowsePath(cwd);
-  }, [cwd]);
-
-  const load = async (path?: string) => {
-    try {
-      const query = path ? `?path=${encodeURIComponent(path)}` : "";
-      const result = (await rest(`${ns}/_fs/list${query}`)) as FsListing;
-      setListing(result);
-      setBrowsePath(result.path);
-      setError(null);
-    } catch (e) {
-      setError(e);
-    }
-  };
-
-  useEffect(() => {
-    load(browsePath);
-    // Only on mount; `navigate` below drives further loads explicitly.
-  }, []);
-
-  const navigate = (path: string) => load(path);
-
-  const openHere = async () => {
-    if (!listing) return;
+  const openAt = async (path: string) => {
     setBusy(true);
     try {
-      await rest(`${ns}/_cwd`, { method: "POST", body: { path: listing.path, create: false } });
+      await rest(`${ns}/_cwd`, { method: "POST", body: { path, create: false } });
       setError(null);
       onChanged();
     } catch (e) {
@@ -236,9 +205,7 @@ function ProjectTab({ rest, ns, cwd, onChanged }: { rest: RestFn; ns: string; cw
     }
   };
 
-  const createHere = async () => {
-    if (!listing || !newName) return;
-    const path = `${listing.path.replace(/\/+$/, "")}/${newName}`;
+  const createAt = async (path: string) => {
     setBusy(true);
     try {
       await rest(`${ns}/_cwd`, { method: "POST", body: { path, create: true } });
@@ -252,75 +219,48 @@ function ProjectTab({ rest, ns, cwd, onChanged }: { rest: RestFn; ns: string; cw
     }
   };
 
-  const crumbs = listing ? listing.path.split("/").filter(Boolean) : [];
-
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
       <div className="flex items-center gap-2 text-(--ui-text-tertiary)">
         <span>projet actif : </span>
         <span>{cwd ?? "?"}</span>
       </div>
-      {!listing ? (
-        <div>chargement…</div>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center gap-1 text-sm">
-            <button type="button" onClick={() => navigate("/")}>
-              /
-            </button>
-            {crumbs.map((seg, i) => (
-              <span key={i} className="flex items-center gap-1">
-                <span>/</span>
-                <button type="button" onClick={() => navigate("/" + crumbs.slice(0, i + 1).join("/"))}>
-                  {seg}
+      <div className="flex-1 min-h-0 overflow-auto">
+        <FsBrowser
+          rest={rest}
+          ns={ns}
+          initialPath={cwd}
+          listClassName="flex-1 overflow-auto border border-(--ui-stroke-secondary) rounded"
+          actions={(listing) => (
+            <>
+              <div className="flex items-center gap-2">
+                <button type="button" disabled={busy || !listing.hasProject} onClick={() => openAt(listing.path)}>
+                  Ouvrir ce dossier
                 </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex-1 min-h-0 overflow-auto border border-(--ui-stroke-secondary) rounded">
-            {listing.parent !== null ? (
-              <button
-                type="button"
-                className="block w-full text-left px-2 py-1"
-                onClick={() => navigate(listing.parent as string)}
-              >
-                ..
-              </button>
-            ) : null}
-            {listing.entries.map((entry) => (
-              <button
-                key={entry.path}
-                type="button"
-                className="flex w-full items-center justify-between gap-2 px-2 py-1 text-left"
-                onClick={() => navigate(entry.path)}
-              >
-                <span>{entry.name}</span>
-                {entry.hasProject ? <span className="text-xs opacity-70">● projet</span> : null}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" disabled={busy || !listing.hasProject} onClick={openHere}>
-              Ouvrir ce dossier
-            </button>
-            <span className="text-(--ui-text-tertiary) text-xs">
-              {listing.hasProject ? "contient déjà un projet" : "pas encore de projet ici"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="nom du nouveau projet"
-              className="flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-2 py-1"
-            />
-            <button type="button" disabled={busy || !newName} onClick={createHere}>
-              Créer ici
-            </button>
-          </div>
-        </>
-      )}
+                <span className="text-(--ui-text-tertiary) text-xs">
+                  {listing.hasProject ? "contient déjà un projet" : "pas encore de projet ici"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="nom du nouveau projet"
+                  className="flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-2 py-1"
+                />
+                <button
+                  type="button"
+                  disabled={busy || !newName}
+                  onClick={() => createAt(`${listing.path.replace(/\/+$/, "")}/${newName}`)}
+                >
+                  Créer ici
+                </button>
+              </div>
+            </>
+          )}
+        />
+      </div>
       {error ? <pre className="text-red-400 whitespace-pre-wrap">{String(error)}</pre> : null}
     </div>
   );

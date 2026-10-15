@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ParagoneApi } from "../api/client";
 import { formatDate, formatDuration } from "../format";
 import { Badge, ClsTag, ErrorMessage, KvGrid, Message, Section } from "../components/widgets";
+import { FsBrowser, type RestFn } from "../components/FsBrowser";
 import type { Vocabulary } from "../triage/types";
 
 const JOBS_POLL_MS = 1500;
@@ -78,13 +79,23 @@ function ConfigForm({
   config,
   vocabulary,
   onSave,
+  fsRest,
+  fsNs,
+  cwd,
 }: {
   config: Config;
   vocabulary: Vocabulary;
   onSave: (config: Config) => Promise<void>;
+  /** Navigateur de dossiers/fichiers pour "Dossier à analyser" -- Hermes
+   * seulement (dépend du proxy `_fs/list`) ; absent en standalone, où le
+   * champ reste un texte libre, comme avant. */
+  fsRest?: RestFn;
+  fsNs?: string;
+  cwd?: string;
 }) {
   const [analyze, setAnalyze] = useState(config.analyze ?? "");
   const [batch, setBatch] = useState(config.batch);
+  const [browsing, setBrowsing] = useState(false);
   const chosen = new Set(config.classes.map((c) => c.toUpperCase()));
   const [checked, setChecked] = useState<Set<string>>(
     new Set(vocabulary.impactClasses.filter((cls) => chosen.has(cls) || chosen.has("ALL"))),
@@ -98,6 +109,11 @@ function ConfigForm({
       else next.add(cls);
       return next;
     });
+  };
+
+  const pick = (path: string) => {
+    setAnalyze(path);
+    setBrowsing(false);
   };
 
   const save = async () => {
@@ -116,13 +132,41 @@ function ConfigForm({
     <div className="card form">
       <label>
         Dossier à analyser
-        <input
-          type="text"
-          value={analyze}
-          onChange={(e) => setAnalyze(e.target.value)}
-          placeholder="chemin absolu du dossier ou du fichier"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={analyze}
+            onChange={(e) => setAnalyze(e.target.value)}
+            placeholder="chemin absolu du dossier ou du fichier"
+            className="flex-1"
+          />
+          {fsRest && fsNs ? (
+            <button type="button" onClick={() => setBrowsing((b) => !b)}>
+              {browsing ? "Fermer" : "Parcourir"}
+            </button>
+          ) : null}
+        </div>
       </label>
+      {browsing && fsRest && fsNs ? (
+        <FsBrowser
+          rest={fsRest}
+          ns={fsNs}
+          // Préselection sur le dossier du projet actif : le workflow de
+          // kbtch_ implique souvent un symlink vers jxscout au sein de
+          // l'arbo de travail, donc le point de départ le plus utile est le
+          // projet lui-même, pas la racine du système ou le home.
+          initialPath={analyze || cwd}
+          includeFiles
+          onPickFile={pick}
+          actions={(listing) => (
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => pick(listing.path)}>
+                Choisir ce dossier
+              </button>
+            </div>
+          )}
+        />
+      ) : null}
       <div className="classes">
         {vocabulary.impactClasses.map((cls) => (
           <label key={cls} className="inline">
@@ -145,7 +189,19 @@ function ConfigForm({
   );
 }
 
-export function JobsView({ api, vocabulary }: { api: ParagoneApi; vocabulary: Vocabulary | null }) {
+export function JobsView({
+  api,
+  vocabulary,
+  fsRest,
+  fsNs,
+  cwd,
+}: {
+  api: ParagoneApi;
+  vocabulary: Vocabulary | null;
+  fsRest?: RestFn;
+  fsNs?: string;
+  cwd?: string;
+}) {
   const [config, setConfig] = useState<Config | null>(null);
   const [configError, setConfigError] = useState<unknown>(null);
   const [current, setCurrent] = useState<Job | null>(null);
@@ -200,14 +256,14 @@ export function JobsView({ api, vocabulary }: { api: ParagoneApi; vocabulary: Vo
 
   return (
     <div className="page">
-      <h2>Travaux</h2>
+      <h2>Scan &amp; Juge</h2>
       <Section title="Configuration" aside="en mémoire, le temps du service">
         {configError ? (
           <ErrorMessage error={configError} />
         ) : !config || !vocabulary ? (
           <div>chargement…</div>
         ) : (
-          <ConfigForm config={config} vocabulary={vocabulary} onSave={save} />
+          <ConfigForm config={config} vocabulary={vocabulary} onSave={save} fsRest={fsRest} fsNs={fsNs} cwd={cwd} />
         )}
       </Section>
       <Section title="Lancer" aside="un seul travail à la fois">

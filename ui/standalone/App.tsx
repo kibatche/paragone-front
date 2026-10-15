@@ -22,7 +22,7 @@ const TABS = [
   { id: "corpus", label: "Corpus" },
   { id: "stats", label: "Statistiques" },
   { id: "reference", label: "Référentiel" },
-  { id: "jobs", label: "Travaux" },
+  { id: "jobs", label: "Scan & Juge" },
 ] as const;
 
 export function App({ api }: { api: ParagoneApi }) {
