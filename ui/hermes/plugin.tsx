@@ -23,7 +23,7 @@ import type { Vocabulary } from "../triage/types";
 
 type RestFn = (path: string, opts?: { method?: string; body?: unknown }) => Promise<unknown>;
 
-type Brick = { id: string; label: string; running: boolean; healthy: boolean; base_url: string };
+type Brick = { id: string; label: string; running: boolean; healthy: boolean; base_url: string; cwd?: string };
 
 type OpenApiDoc = { paths?: Record<string, { get?: unknown }> };
 
@@ -159,6 +159,59 @@ function ParagoneTabs({ api, rest, ns }: { api: ParagoneApi; rest: RestFn; ns: s
   );
 }
 
+function ProjectPicker({ rest, ns, cwd, onChanged }: { rest: RestFn; ns: string; cwd?: string; onChanged: () => void }) {
+  const [path, setPath] = useState(cwd ?? "");
+  const [create, setCreate] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  // Reflects the server's actual cwd once it answers; never overwrites text
+  // the user is mid-typing (only syncs while the field still matches cwd or
+  // is empty, i.e. hasn't been touched since the last known value).
+  useEffect(() => {
+    if (cwd !== undefined && (path === "" || path === cwd)) setPath(cwd);
+  }, [cwd]);
+
+  const open = async () => {
+    setBusy(true);
+    try {
+      await rest(`${ns}/_cwd`, { method: "POST", body: { path, create } });
+      setError(null);
+      onChanged();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 text-(--ui-text-tertiary)">
+        <span>projet : </span>
+        <span>{cwd ?? "?"}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          placeholder="/chemin/absolu/vers/le/projet"
+          className="flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-2 py-1"
+        />
+        <label className="flex items-center gap-1 text-xs text-(--ui-text-tertiary)">
+          <input type="checkbox" checked={create} onChange={(e) => setCreate(e.target.checked)} />
+          créer si absent
+        </label>
+        <button type="button" disabled={busy || !path} onClick={open}>
+          Ouvrir
+        </button>
+      </div>
+      {error ? <pre className="text-red-400 whitespace-pre-wrap">{String(error)}</pre> : null}
+    </div>
+  );
+}
+
 function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
   const ns = `/${brick.id}`;
   const [status, setStatus] = useState<Brick>(brick);
@@ -222,9 +275,14 @@ function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
           Arrêter
         </button>
       </div>
+      <ProjectPicker rest={rest} ns={ns} cwd={status.cwd} onChanged={refreshStatus} />
       {error ? <pre className="text-red-400 whitespace-pre-wrap">{String(error)}</pre> : null}
       <div className="flex-1 min-h-0">
-        {brick.id === "paragone" ? <ParagoneTabs api={api} rest={rest} ns={ns} /> : <ApiExplorer rest={rest} ns={ns} />}
+        {brick.id === "paragone" ? (
+          <ParagoneTabs key={status.cwd} api={api} rest={rest} ns={ns} />
+        ) : (
+          <ApiExplorer rest={rest} ns={ns} />
+        )}
       </div>
     </div>
   );
