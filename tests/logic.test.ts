@@ -10,6 +10,7 @@ import { parseRoute } from "../public/src/shell/route.js";
 import { keyAction } from "../public/src/triage/keys.js";
 import { INVENTORY_DECISIONS } from "../public/src/triage/constants.js";
 import { filtersFromParams } from "../public/src/triage/state.js";
+import { resolveRouteName } from "../ui/shell/hash";
 
 describe("buildQuery", () => {
   test("ignore les valeurs vides, nulles et indéfinies", () => {
@@ -149,5 +150,16 @@ describe("routage", () => {
     expect(filters.class).toBe("XSS");
     expect(filters.score).toBe("HIGH");
     expect(filters.q).toBe("");
+  });
+});
+
+describe("routage (port React, shell/hash.ts)", () => {
+  test("une route connue est reprise telle quelle", () => {
+    expect(resolveRouteName("corpus", ["triage", "corpus", "stats"], "triage")).toBe("corpus");
+  });
+
+  test("une route inconnue ou absente retombe sur le défaut", () => {
+    expect(resolveRouteName("nimporte", ["triage", "corpus"], "triage")).toBe("triage");
+    expect(resolveRouteName("", ["triage", "corpus"], "triage")).toBe("triage");
   });
 });
