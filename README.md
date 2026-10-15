@@ -152,6 +152,8 @@ depuis cet onglet.
 
 <img width="2501" height="949" alt="image" src="https://github.com/user-attachments/assets/0a967b9c-233f-41ed-9c6d-79d569cc6049" />
 
+<img width="1654" height="743" alt="image" src="https://github.com/user-attachments/assets/281b9bc6-38e9-4070-b6fe-b52d1c0c9bd8" />
+
 <img width="1368" height="429" alt="image" src="https://github.com/user-attachments/assets/51304c71-64ad-4d9b-9d6a-3bf4f51824b8" />
 
 <img width="1368" height="1281" alt="image" src="https://github.com/user-attachments/assets/7f1c1e4b-ad90-4111-95f4-2ddc40487aeb" />
