@@ -9,8 +9,9 @@
  * `package.json` -- bundle unique, `react`/`react/jsx-runtime`/
  * `@hermes/plugin-sdk` externalisés (déjà fournis par l'hôte desktop).
  */
-import { ROUTES_AREA, SIDEBAR_NAV_AREA } from "@hermes/plugin-sdk";
+import { Button, ROUTES_AREA, SIDEBAR_NAV_AREA, StatusDot, host } from "@hermes/plugin-sdk";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { makeApi, type Fetcher, type ParagoneApi } from "../api/client";
 import { buildQuery } from "../api/query";
 import { skinCss } from "./skin.generated";
@@ -129,12 +130,14 @@ function ParagoneTabs({
   ns,
   cwd,
   onProjectChanged,
+  statusControl,
 }: {
   api: ParagoneApi;
   rest: RestFn;
   ns: string;
   cwd?: string;
   onProjectChanged: () => void;
+  statusControl: ReactNode;
 }) {
   const [tab, setTab] = useState<
     "project" | "jobs" | "triage" | "inventory" | "corpus" | "stats" | "reference" | "debug"
@@ -168,12 +171,15 @@ function ParagoneTabs({
   ];
   return (
     <div className="flex flex-col gap-2 h-full min-h-0">
-      <div className="flex gap-2 border-b border-(--ui-stroke-secondary)">
-        {tabs.map((t) => (
-          <button key={t.id} type="button" className={tab === t.id ? "underline" : ""} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2 border-b border-(--ui-stroke-secondary)">
+        <div className="flex gap-2">
+          {tabs.map((t) => (
+            <button key={t.id} type="button" className={tab === t.id ? "underline" : ""} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {statusControl}
       </div>
       <div className={`flex-1 min-h-0 ${tab === "triage" || tab === "inventory" || tab === "project" ? "" : "overflow-auto"}`}>
         {tab === "project" ? <ProjectTab rest={rest} ns={ns} cwd={cwd} onChanged={onProjectChanged} /> : null}
@@ -278,18 +284,51 @@ function ProjectTab({ rest, ns, cwd, onChanged }: { rest: RestFn; ns: string; cw
   );
 }
 
+/**
+ * Compact lifecycle control -- a single toggle button (its label and action
+ * flip with `status.healthy`) plus a green/red pastille, meant to sit at the
+ * far right of a tab strip instead of its own banner row. We deliberately
+ * drop the old "démarré par nous" / "pas démarré par nous" wording (kbtch_:
+ * irrelevant) -- only reachability matters here.
+ */
+function BrickStatusControl({
+  status,
+  busy,
+  onStart,
+  onStop,
+}: {
+  status: Brick;
+  busy: boolean;
+  onStart: () => void;
+  onStop: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <StatusDot tone={status.healthy ? "good" : "bad"} />
+      <Button
+        type="button"
+        size="sm"
+        variant={status.healthy ? "outline" : "default"}
+        disabled={busy}
+        onClick={status.healthy ? onStop : onStart}
+      >
+        {busy ? "…" : status.healthy ? "Arrêter" : "Démarrer"}
+      </Button>
+    </div>
+  );
+}
+
 function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
   const ns = `/${brick.id}`;
   const [status, setStatus] = useState<Brick>(brick);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
 
   const refreshStatus = async () => {
     try {
       setStatus((await rest(`${ns}/_status`)) as Brick);
-      setError(null);
-    } catch (e) {
-      setError(e);
+    } catch {
+      // A failed poll already shows up as a red dot -- a toast every 4s for
+      // the same condition would be noise, not a notification.
     }
   };
 
@@ -304,7 +343,7 @@ function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
     try {
       setStatus((await rest(`${ns}/_start`, { method: "POST" })) as Brick);
     } catch (e) {
-      setError(e);
+      host.notifyError(e, `Impossible de démarrer ${brick.label}`);
     } finally {
       setBusy(false);
     }
@@ -315,40 +354,34 @@ function BrickDetail({ rest, brick }: { rest: RestFn; brick: Brick }) {
     try {
       setStatus((await rest(`${ns}/_stop`, { method: "POST" })) as Brick);
     } catch (e) {
-      setError(e);
+      host.notifyError(e, `Impossible d'arrêter ${brick.label}`);
     } finally {
       setBusy(false);
     }
   };
 
   const api = useMemo(() => makeApi(fetcherFor(rest, ns)), [rest, ns]);
+  const statusControl = <BrickStatusControl status={status} busy={busy} onStart={start} onStop={stop} />;
 
-  return (
+  return brick.id === "paragone" ? (
+    <ParagoneTabs
+      key={status.cwd}
+      api={api}
+      rest={rest}
+      ns={ns}
+      cwd={status.cwd}
+      onProjectChanged={refreshStatus}
+      statusControl={statusControl}
+    />
+  ) : (
     <div className="flex flex-col gap-3 h-full min-h-0">
-      <div className="font-medium">{brick.label}</div>
-      <div className="flex items-center gap-2 text-(--ui-text-tertiary)">
-        <span>statut : </span>
-        <span>
-          {status.running ? "démarré par nous" : "pas démarré par nous"} /{" "}
-          {status.healthy ? "joignable" : "pas joignable"} ({status.base_url})
-        </span>
+      <div className="flex items-center justify-between gap-2 border-b border-(--ui-stroke-secondary) pb-2">
+        <div className="font-medium">{brick.label}</div>
+        {statusControl}
       </div>
-      <div className="flex gap-2">
-        <button type="button" disabled={busy} onClick={start}>
-          Démarrer
-        </button>
-        <button type="button" disabled={busy} onClick={stop}>
-          Arrêter
-        </button>
+      <div className="flex-1 min-h-0 overflow-auto">
+        <ApiExplorer rest={rest} ns={ns} />
       </div>
-      <div className="flex-1 min-h-0">
-        {brick.id === "paragone" ? (
-          <ParagoneTabs key={status.cwd} api={api} rest={rest} ns={ns} cwd={status.cwd} onProjectChanged={refreshStatus} />
-        ) : (
-          <ApiExplorer rest={rest} ns={ns} />
-        )}
-      </div>
-      {error ? <pre className="text-red-400 whitespace-pre-wrap">{String(error)}</pre> : null}
     </div>
   );
 }
