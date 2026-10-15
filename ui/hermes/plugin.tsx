@@ -139,6 +139,16 @@ function ParagoneTabs({
   const [tab, setTab] = useState<
     "project" | "jobs" | "triage" | "inventory" | "corpus" | "stats" | "reference" | "debug"
   >("triage");
+  // Renvoi "Stats → Triage filtré" (StatsView::onOpenTriage) : state React
+  // ordinaire, PAS le hash -- voir shell/hash.ts pour pourquoi ce plugin ne
+  // touche jamais window.location. TriageView ne lit `pendingFilters` qu'au
+  // montage (useMemo([])), donc la valeur présente à l'instant où `tab`
+  // bascule sur "triage" est celle qui compte.
+  const [pendingFilters, setPendingFilters] = useState<Record<string, string> | undefined>(undefined);
+  const openTriage = (filter: string, value: string) => {
+    setPendingFilters({ [filter]: value });
+    setTab("triage");
+  };
   const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
   useEffect(() => {
     api
@@ -168,11 +178,13 @@ function ParagoneTabs({
       <div className={`flex-1 min-h-0 ${tab === "triage" || tab === "inventory" || tab === "project" ? "" : "overflow-auto"}`}>
         {tab === "project" ? <ProjectTab rest={rest} ns={ns} cwd={cwd} onChanged={onProjectChanged} /> : null}
         {tab === "reference" ? <ReferenceView api={api} /> : null}
-        {tab === "stats" ? <StatsView api={api} /> : null}
+        {tab === "stats" ? <StatsView api={api} onOpenTriage={openTriage} /> : null}
         {tab === "corpus" ? <CorpusView api={api} /> : null}
         {tab === "debug" ? <ApiExplorer rest={rest} ns={ns} /> : null}
         {tab === "jobs" ? <JobsView api={api} vocabulary={vocabulary} fsRest={rest} fsNs={ns} cwd={cwd} /> : null}
-        {tab === "triage" ? <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} /> : null}
+        {tab === "triage" ? (
+          <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} initialFilters={pendingFilters} />
+        ) : null}
         {tab === "inventory" ? <TriageView api={api} vocabulary={vocabulary} mode={INVENTORY_MODE} /> : null}
       </div>
     </div>

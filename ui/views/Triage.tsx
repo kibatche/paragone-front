@@ -76,15 +76,21 @@ export function TriageView({
   api,
   vocabulary,
   mode = IMPACT_MODE,
+  initialFilters,
+  onFiltersChange,
 }: {
   api: ParagoneApi;
   vocabulary: Vocabulary | null;
   mode?: Mode;
+  /** Filtres de départ (lus une seule fois, au montage -- un deep link ou un renvoi depuis Statistiques). */
+  initialFilters?: Record<string, string>;
+  /** Appelé à chaque changement des filtres vivants -- l'appelant décide quoi en faire (persister dans l'URL en standalone, ignorer dans Hermes). */
+  onFiltersChange?: (filters: Record<string, string>) => void;
 }) {
   const triage = useTriage(
     api,
     mode,
-    useMemo(() => filtersFromParams(new URLSearchParams()), []),
+    useMemo(() => initialFilters ?? filtersFromParams(new URLSearchParams()), []),
   );
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -100,6 +106,10 @@ export function TriageView({
       .then(() => triage.reload())
       .catch(setError);
   }, [api, mode]);
+
+  useEffect(() => {
+    onFiltersChange?.(triage.state.filters);
+  }, [triage.state.filters]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
