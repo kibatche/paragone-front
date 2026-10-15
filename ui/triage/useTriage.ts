@@ -225,7 +225,9 @@ export function useTriage(
     async (score: string, note = "") => {
       const id = stateRef.current.selectedId;
       if (id === null) return;
-      const before = stateRef.current.lead ? { score: stateRef.current.lead.human_score ?? null, note: stateRef.current.lead.human_note ?? null } : null;
+      const before = stateRef.current.lead
+        ? { score: stateRef.current.lead.human_score ?? null, note: stateRef.current.lead.human_note ?? null }
+        : null;
       await api.setHuman(id, { human_score: score, human_note: note });
       setState((s) => ({ ...s, lastDecision: { id, before } }));
       if (stateRef.current.masks.showReviewed) {

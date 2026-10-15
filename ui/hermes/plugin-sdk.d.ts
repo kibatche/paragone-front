@@ -16,9 +16,7 @@ declare module "@hermes/plugin-sdk" {
   export function Button(
     props: ComponentProps<"button"> & { variant?: string; size?: string; asChild?: boolean },
   ): ReactNode;
-  export function StatusDot(
-    props: ComponentProps<"span"> & { tone: "good" | "muted" | "warn" | "bad" },
-  ): ReactNode;
+  export function StatusDot(props: ComponentProps<"span"> & { tone: "good" | "muted" | "warn" | "bad" }): ReactNode;
 
   /** In-app toast door (we only need the error toast here). */
   export const host: {

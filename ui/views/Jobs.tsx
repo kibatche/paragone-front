@@ -24,8 +24,18 @@ type Job = {
   ended_at: number | null;
   classes: string[];
   progress: { done: number; total: number } | null;
-  scan: { files: number; scanned: number; unchanged: number; notJs: number; parseErrors: number; addedLeads: number } | null;
-  usage: Record<string, { input: number; cacheRead: number; cacheWrite: number; output: number; total: number; cost: number }> | null;
+  scan: {
+    files: number;
+    scanned: number;
+    unchanged: number;
+    notJs: number;
+    parseErrors: number;
+    addedLeads: number;
+  } | null;
+  usage: Record<
+    string,
+    { input: number; cacheRead: number; cacheWrite: number; output: number; total: number; cost: number }
+  > | null;
   error: string | null;
 };
 
@@ -60,7 +70,14 @@ function JobCard({ title, job }: { title: string; job: Job | null }) {
             ["état", <Badge value={state} text={job.state} />],
             ["début", formatDate(job.started_at)],
             ["durée", formatDuration(job.started_at, job.ended_at)],
-            ["classes", <span>{job.classes.map((c) => <ClsTag key={c} cls={c} />)}</span>],
+            [
+              "classes",
+              <span>
+                {job.classes.map((c) => (
+                  <ClsTag key={c} cls={c} />
+                ))}
+              </span>,
+            ],
             ["erreur", job.error ? <span className="bad">{job.error}</span> : null],
           ]}
         />

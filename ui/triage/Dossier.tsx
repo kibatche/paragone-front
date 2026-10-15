@@ -76,7 +76,9 @@ function JudgeCard({ judgement, classFrame }: { judgement: Judgement; classFrame
         <span className="faint">{judgement.model}</span>
       </div>
       <DistributionBar probabilities={judgement.probabilities} />
-      {classFrame?.scores?.[judgement.score] ? <div className="jev-meaning">{classFrame.scores[judgement.score]}</div> : null}
+      {classFrame?.scores?.[judgement.score] ? (
+        <div className="jev-meaning">{classFrame.scores[judgement.score]}</div>
+      ) : null}
       {reason ? (
         <div className="jev-reason">
           <b>Motif de rejet : {reason}</b>
@@ -109,7 +111,14 @@ function RenderSink({ item, dossier, mode }: { item: Lead; dossier: DossierData 
       <div className="card">
         <KvGrid
           pairs={[
-            ["motif", item.pattern ? <span className="pattern" key="p"><Holes text={item.pattern} /></span> : null],
+            [
+              "motif",
+              item.pattern ? (
+                <span className="pattern" key="p">
+                  <Holes text={item.pattern} />
+                </span>
+              ) : null,
+            ],
             ["reconstruit", item.reconstructed ? <code key="r">{item.reconstructed}</code> : null],
             ["emplacement", slot ?? null],
             ["méthode", request?.method ?? null],
@@ -136,7 +145,15 @@ function RenderSink({ item, dossier, mode }: { item: Lead; dossier: DossierData 
   );
 }
 
-function OriginNode({ finding, dossier, onStep }: { finding: Finding; dossier: DossierData | null; onStep: () => void }) {
+function OriginNode({
+  finding,
+  dossier,
+  onStep,
+}: {
+  finding: Finding;
+  dossier: DossierData | null;
+  onStep: () => void;
+}) {
   const isSource = finding.kind === SOURCE_KIND && finding.knownSource;
   const classes = ["origin"];
   if (isSource) classes.push("source");
@@ -363,7 +380,9 @@ export function Dossier({
   ));
 
   const reveal = (index: number) => codeHandleRef.current?.showStep(index);
-  const lines = lead.lead?.taint?.findings ? originLines(lead.lead.taint.findings) : { origin: new Set<number>(), sanitized: new Set<number>() };
+  const lines = lead.lead?.taint?.findings
+    ? originLines(lead.lead.taint.findings)
+    : { origin: new Set<number>(), sanitized: new Set<number>() };
   const steps = codeSteps(lead);
 
   return (
@@ -386,7 +405,13 @@ export function Dossier({
           {buttons}
           {others}
         </div>
-        <textarea ref={noteRef} className="note" placeholder="commentaire (touche n)" rows={2} defaultValue={lead.human_note ?? ""} />
+        <textarea
+          ref={noteRef}
+          className="note"
+          placeholder="commentaire (touche n)"
+          rows={2}
+          defaultValue={lead.human_note ?? ""}
+        />
         <div className="tools">
           <button type="button" disabled={!triage.state.lastDecision} onClick={() => run(() => triage.undo())}>
             ↶ annuler le dernier tri
@@ -410,7 +435,10 @@ export function Dossier({
         />
         <Section title="Code" aside="fichier source">
           {sourceError ? (
-            <Message kind="bad" text={`✗ ${(sourceError as ApiError as { detail?: string }).detail ?? String(sourceError)}`} />
+            <Message
+              kind="bad"
+              text={`✗ ${(sourceError as ApiError as { detail?: string }).detail ?? String(sourceError)}`}
+            />
           ) : !source ? (
             <div className="muted">Chargement du fichier…</div>
           ) : (

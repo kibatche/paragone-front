@@ -2,3 +2,5 @@ node_modules/
 public/dist/
 public/.paragone/
 ui/hermes/skin.generated.ts
+hermes-plugin/desktop/
+hermes-plugin/**/__pycache__/

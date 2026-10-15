@@ -9,14 +9,7 @@
  * taint se parcourent une à une avec leur portion surlignée.
  */
 import { useEffect, useRef, useState } from "react";
-import {
-  CODE_GUTTER_PX,
-  LINE_HEIGHT_PX,
-  highlightRange,
-  scrollTopFor,
-  visibleRange,
-  type Span,
-} from "./geometry";
+import { CODE_GUTTER_PX, LINE_HEIGHT_PX, highlightRange, scrollTopFor, visibleRange, type Span } from "./geometry";
 import { highlightJs, splitHighlightedLines } from "./highlight";
 import { stepCaption, type Step } from "./codeSteps";
 

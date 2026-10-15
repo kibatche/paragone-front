@@ -1,0 +1,7 @@
+name: panoptika
+version: 0.1.0
+description: >-
+  Centre desktop pour des outils locaux de pentest / bug bounty / recherche
+  (paragone en premier). Proxy server-side vers chaque outil (ManagedTool /
+  tool_proxy.py) -- pas d'iframe, pas de CORS, l'API de l'outil ne change pas.
+author: kbtch_

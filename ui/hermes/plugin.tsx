@@ -181,7 +181,9 @@ function ParagoneTabs({
         </div>
         {statusControl}
       </div>
-      <div className={`flex-1 min-h-0 ${tab === "triage" || tab === "inventory" || tab === "project" ? "" : "overflow-auto"}`}>
+      <div
+        className={`flex-1 min-h-0 ${tab === "triage" || tab === "inventory" || tab === "project" ? "" : "overflow-auto"}`}
+      >
         {tab === "project" ? <ProjectTab rest={rest} ns={ns} cwd={cwd} onChanged={onProjectChanged} /> : null}
         {tab === "reference" ? <ReferenceView api={api} /> : null}
         {tab === "stats" ? <StatsView api={api} onOpenTriage={openTriage} /> : null}
