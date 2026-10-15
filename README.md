@@ -29,7 +29,7 @@ ui/
 - **Front web autonome** (`ui/standalone/`) : un point d'entrée qui possède
   toute la fenêtre du navigateur, fait ses propres `fetch` vers `/api/...`,
   et gère son propre routage par URL (`#/triage?...`, back/forward
-  fonctionnent). Chargé par `public/react.html`.
+  fonctionnent). Chargé par `public/index.html`.
 - **Plugin desktop Hermes** (`ui/hermes/`) : un onglet dans l'app desktop
   [Hermes](https://hermes-agent.nousresearch.com/docs), qui ne fait jamais de
   `fetch` direct -- tout passe par `ctx.rest` (le proxy server-to-server du
@@ -77,8 +77,7 @@ Depuis le dossier qui contient `.paragone/` :
 paragone --serve
 ```
 
-Ouvrir `http://127.0.0.1:7331/` (vanilla, `index.html`) ou
-`http://127.0.0.1:7331/react.html` (port React, même vues). Six pages,
+Ouvrir `http://127.0.0.1:7331/`. Six pages,
 accessibles par la barre du haut :
 
 - **Triage** : la file des leads, le dossier du lead ouvert (verdict du juge, sink, origines du taint, doublons, cadre de jugement, code source). Les gestes se font au clavier : `j`/`k` lead suivant ou précédent, `a` retenir, `r` rejeter, `e` escalader, `n` commentaire, `u` annuler le dernier tri, `/` rechercher. Dans le dossier, la fenêtre de code parcourt le fichier entier : ◀ ▶ passent du sink aux origines du taint (la portion de l'étape est surlignée), « agrandir » la met en plein écran, `Échap` la referme.
