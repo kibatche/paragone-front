@@ -18,6 +18,7 @@ import { ReferenceView } from "../views/Reference";
 import { StatsView } from "../views/Stats";
 import { CorpusView } from "../views/Corpus";
 import { TriageView } from "../views/Triage";
+import { JobsView } from "../views/Jobs";
 import { IMPACT_MODE, INVENTORY_MODE } from "../triage/constants";
 import type { Vocabulary } from "../triage/types";
 
@@ -134,9 +135,9 @@ function ParagoneTabs({
   cwd?: string;
   onProjectChanged: () => void;
 }) {
-  const [tab, setTab] = useState<"project" | "triage" | "inventory" | "corpus" | "stats" | "reference" | "debug">(
-    "triage",
-  );
+  const [tab, setTab] = useState<
+    "project" | "triage" | "inventory" | "corpus" | "stats" | "reference" | "jobs" | "debug"
+  >("triage");
   const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
   useEffect(() => {
     api
@@ -151,6 +152,7 @@ function ParagoneTabs({
     { id: "corpus", label: "Corpus" },
     { id: "stats", label: "Statistiques" },
     { id: "reference", label: "Référentiel" },
+    { id: "jobs", label: "Travaux" },
     { id: "debug", label: "Debug" },
   ];
   return (
@@ -168,6 +170,7 @@ function ParagoneTabs({
         {tab === "stats" ? <StatsView api={api} /> : null}
         {tab === "corpus" ? <CorpusView api={api} /> : null}
         {tab === "debug" ? <ApiExplorer rest={rest} ns={ns} /> : null}
+        {tab === "jobs" ? <JobsView api={api} vocabulary={vocabulary} /> : null}
         {tab === "triage" ? <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} /> : null}
         {tab === "inventory" ? <TriageView api={api} vocabulary={vocabulary} mode={INVENTORY_MODE} /> : null}
       </div>

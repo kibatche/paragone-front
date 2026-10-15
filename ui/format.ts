@@ -31,6 +31,13 @@ export function formatDate(ms: number | null | undefined): string {
   return new Date(ms).toLocaleString("fr-FR");
 }
 
+/** Durée écoulée depuis `startMs` jusqu'à `endMs` (ou maintenant, travail en cours). */
+export function formatDuration(startMs: number | null | undefined, endMs: number | null | undefined): string {
+  if (!startMs) return "—";
+  const seconds = Math.max(0, Math.round(((endMs ?? Date.now()) - startMs) / 1000));
+  return seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
+}
+
 export function percent(value: number | null | undefined): string {
   return `${Math.round((value ?? 0) * 100)} %`;
 }

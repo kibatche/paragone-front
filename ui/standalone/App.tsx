@@ -11,16 +11,18 @@ import { ReferenceView } from "../views/Reference";
 import { StatsView } from "../views/Stats";
 import { CorpusView } from "../views/Corpus";
 import { TriageView } from "../views/Triage";
+import { JobsView } from "../views/Jobs";
 import { IMPACT_MODE, INVENTORY_MODE } from "../triage/constants";
 import type { Vocabulary } from "../triage/types";
 
-/** Ordre et route par défaut : `public/src/shell/constants.js::ROUTES`/`DEFAULT_ROUTE` du front vanilla -- ce n'est pas arbitraire, ça reflète le flow réel (on triage d'abord, le reste est secondaire). "Travaux" (jobs) n'est pas encore porté. */
+/** Ordre et route par défaut : `public/src/shell/constants.js::ROUTES`/`DEFAULT_ROUTE` du front vanilla -- ce n'est pas arbitraire, ça reflète le flow réel (on triage d'abord, le reste est secondaire). */
 const TABS = [
   { id: "triage", label: "Triage" },
   { id: "inventory", label: "Inventaires" },
   { id: "corpus", label: "Corpus" },
   { id: "stats", label: "Statistiques" },
   { id: "reference", label: "Référentiel" },
+  { id: "jobs", label: "Travaux" },
 ] as const;
 
 export function App({ api }: { api: ParagoneApi }) {
@@ -52,6 +54,7 @@ export function App({ api }: { api: ParagoneApi }) {
         {tab === "corpus" ? <CorpusView api={api} /> : null}
         {tab === "triage" ? <TriageView api={api} vocabulary={vocabulary} mode={IMPACT_MODE} /> : null}
         {tab === "inventory" ? <TriageView api={api} vocabulary={vocabulary} mode={INVENTORY_MODE} /> : null}
+        {tab === "jobs" ? <JobsView api={api} vocabulary={vocabulary} /> : null}
       </main>
     </>
   );
