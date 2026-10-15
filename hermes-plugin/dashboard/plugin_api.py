@@ -1,8 +1,10 @@
-"""Backend half of panoptika, mounted at /api/plugins/panoptika/.
+"""Backend half of the paragone Hermes plugin, mounted at /api/plugins/paragone/.
 
-One ManagedTool per local tool. Add the next tool (not just paragone) by
-adding another ManagedTool instance and include_router-ing it under its own
-prefix -- no new proxy code.
+One ManagedTool wrapping the local `paragone --serve` process -- no bricks
+registry, no menu: this plugin is paragone and only paragone. Each Hermes
+brick/tool lives in its OWN plugin now (option D, 2026-10-15 -- see
+WORK/panoptika-architecture-decision in the lifeos-memory corpus): there is
+no shared "panoptika" shell to register into anymore.
 """
 from __future__ import annotations
 
@@ -14,11 +16,8 @@ from pathlib import Path
 # of how Hermes imports this module (plain file load vs package import).
 sys.path.insert(0, os.path.dirname(__file__))
 
-from fastapi import APIRouter
-
 from tool_proxy import ManagedTool, ToolConfig
 
-# --- paragone -----------------------------------------------------------
 # This file lives at <paragone-front repo>/hermes-plugin/dashboard/plugin_api.py
 # (installed into Hermes as a symlinked "unified package" -- see
 # scripts/install-hermes-plugin.sh): walking up from here always finds this
@@ -46,35 +45,12 @@ paragone = ManagedTool(
     )
 )
 
-# --- bricks registry ------------------------------------------------------
-# panoptika is the centre; each wrapped tool is a "brique" the desktop side
-# lets the user pick from a menu (like Capabilities -> Plugins). Register a
-# new tool by adding it to this dict with a human label -- nothing else
-# about the selector menu changes. Mounted under its own id as prefix.
-BRICKS: dict[str, ManagedTool] = {
-    "paragone": paragone,
-}
-BRICK_LABELS: dict[str, str] = {
-    "paragone": "paragone",
-}
-
-router = APIRouter()
-for brick_id, tool in BRICKS.items():
-    router.include_router(tool.router, prefix=f"/{brick_id}")
-
-
-@router.get("/_bricks")
-async def _bricks():
-    return [
-        {"id": brick_id, "label": BRICK_LABELS.get(brick_id, brick_id), **(await tool.status())}
-        for brick_id, tool in BRICKS.items()
-    ]
-
+# No prefix, no registry: paragone's own router IS this plugin's router.
+router = paragone.router
 
 # Routes end up at:
-#   GET  /api/plugins/panoptika/_bricks
-#   GET  /api/plugins/panoptika/paragone/_status
-#   POST /api/plugins/panoptika/paragone/_start
-#   POST /api/plugins/panoptika/paragone/_stop
-#   *    /api/plugins/panoptika/paragone/<anything paragone's own API serves>
-#        (e.g. /paragone/openapi/json for its OpenAPI contract, /paragone/meta, ...)
+#   GET  /api/plugins/paragone/_status
+#   POST /api/plugins/paragone/_start
+#   POST /api/plugins/paragone/_stop
+#   *    /api/plugins/paragone/<anything paragone's own API serves>
+#        (e.g. /openapi/json for its OpenAPI contract, /meta, ...)

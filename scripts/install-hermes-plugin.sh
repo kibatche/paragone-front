@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# Installs the panoptika Hermes desktop plugin from THIS checkout, as a
+# Installs the paragone Hermes desktop plugin from THIS checkout, as a
 # "unified package" (plugin.yaml + dashboard/ backend + desktop/ UI) --
 # see https://hermes-agent.nousresearch.com/docs -> Desktop Plugin SDK,
 # "One package, both SDKs".
 #
-# Strategy: symlink $HERMES_HOME/plugins/panoptika -> <this repo>/hermes-plugin
+# This plugin wraps paragone ONLY -- no bricks registry, no shell. Each
+# pentest/bounty tool is its own independent Hermes plugin (option D,
+# 2026-10-15 -- see WORK/panoptika-architecture-decision in the lifeos-memory
+# corpus): Capabilities -> Plugins already IS the "centre", nothing to build.
+#
+# Strategy: symlink $HERMES_HOME/plugins/paragone -> <this repo>/hermes-plugin
 # instead of copying files. This is the SDK's own documented workflow for a
 # package you are actively developing ("a linked package's copy is marked
 # linked: true... every save re-syncs the copy"): every `bun run
-# build:panoptika` after this script runs writes straight into the live
+# build:paragone` after this script runs writes straight into the live
 # install, no extra copy step, no drift between the repo and what Hermes
 # actually loads.
 #
@@ -23,7 +28,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO_DIR="$(pwd)"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
-TARGET="$HERMES_HOME/plugins/panoptika"
+TARGET="$HERMES_HOME/plugins/paragone"
 
 echo "== 1/3 : dépendances (bun install) =="
 bun install
@@ -48,8 +53,8 @@ else
   echo "lien créé : $TARGET -> $REPO_DIR/hermes-plugin"
 fi
 
-echo "== 3/3 : build du plugin desktop (bun run build:panoptika) =="
-bun run build:panoptika
+echo "== 3/3 : build du plugin desktop (bun run build:paragone) =="
+bun run build:paragone
 
 cat <<EOF
 
@@ -57,15 +62,11 @@ Installé. Il reste deux réglages ponctuels côté Hermes (une fois, pas à
 chaque réinstallation) :
 
 1. Autoriser le backend Python (sécurité -- un plugin Python n'est importé
-   que s'il est explicitement listé) : dans ${HERMES_HOME}/config.yaml,
-   sous la clé "plugins:", ajouter "panoptika" à la liste "enabled:" si ce
-   n'est pas déjà fait :
+   que s'il est explicitement listé) : \`hermes plugins enable paragone\`
+   (ou, à la main, sous la clé "plugins:" de ${HERMES_HOME}/config.yaml,
+   ajouter "paragone" à la liste "enabled:" si ce n'est pas déjà fait).
 
-     plugins:
-       enabled:
-         - panoptika
-
-2. Dans le desktop Hermes : Capabilities -> Plugins -> activer "panoptika"
+2. Dans le desktop Hermes : Capabilities -> Plugins -> activer "paragone"
    (si pas déjà actif) -> Rescan. Après un changement du backend Python
    (dashboard/plugin_api.py, tool_proxy.py) il faut quitter et relancer tout
    le desktop -- Rescan ne recharge que desktop/plugin.js.
