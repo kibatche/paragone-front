@@ -52,7 +52,7 @@ export function App({ api }: { api: ParagoneApi }) {
   return (
     <>
       <header className="app-head">
-        <span className="brand">paragone (react, en cours de portage)</span>
+        <span className="brand">paragone</span>
         <nav id="nav">
           {TABS.map((t) => (
             <a key={t.id} className={tab === t.id ? "on" : ""} onClick={() => navigateHash(t.id)}>
