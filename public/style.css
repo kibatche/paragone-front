@@ -46,6 +46,12 @@ body {
   font-family: var(--font-ui);
   font-size: 15.5px;
   line-height: 1.5;
+  /* Dans Hermes, `build-skin.ts` récrit cette règle en `:scope { … }`. Le desktop pose
+     `user-select: none` sur `body` (apps/desktop/src/styles.css, convention des chromes
+     d'application) : sans ce relèvement, aucun chemin de fichier, aucun extrait de code et aucun
+     identifiant de lead n'est sélectionnable à la souris dans le plugin. */
+  -webkit-user-select: text;
+  user-select: text;
 }
 a {
   color: var(--glacier);
