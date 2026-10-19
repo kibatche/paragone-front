@@ -142,7 +142,12 @@ depuis cet onglet.
 
 ### Version Web
 
+<img width="2500" height="1160" alt="image" src="https://github.com/user-attachments/assets/a0b9aacb-a01f-423c-b19b-b146338cba67" />
+
+
 ### Version Hermes
+
+<img width="1635" height="997" alt="image" src="https://github.com/user-attachments/assets/adbc86d4-000b-4472-abbc-85d44b455684" />
 
 ## Tests
 
