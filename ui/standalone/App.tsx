@@ -74,6 +74,7 @@ export function App({ api }: { api: ParagoneApi }) {
             mode={IMPACT_MODE}
             initialFilters={filtersFromParams(params)}
             onFiltersChange={persistFilters}
+            autoFocus
           />
         ) : null}
         {tab === "inventory" ? (
@@ -83,6 +84,7 @@ export function App({ api }: { api: ParagoneApi }) {
             mode={INVENTORY_MODE}
             initialFilters={filtersFromParams(params)}
             onFiltersChange={persistFilters}
+            autoFocus
           />
         ) : null}
         {tab === "jobs" ? <JobsView api={api} vocabulary={vocabulary} /> : null}

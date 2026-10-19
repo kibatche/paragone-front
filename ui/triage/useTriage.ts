@@ -89,8 +89,20 @@ export function useTriage(
     lang: "fr",
     lastDecision: null,
   }));
+  // `stateRef` est la source de vérité SYNCHRONE de l'état. `setState` ne
+  // s'applique qu'au rendu suivant : changer un filtre par `setState` puis
+  // enchaîner sur `reload()` faisait partir les requêtes avec l'ANCIEN filtre
+  // (lu dans `stateRef`), d'où le « il faut cliquer deux fois sur une
+  // catégorie ». Le même décalage faussait l'`offset` de la première page
+  // après un rechargement (items déjà vidés côté React, pas encore côté ref).
+  // Tout passe donc par `commit`, qui écrit la ref immédiatement AVANT de
+  // demander le rendu.
   const stateRef = useRef(state);
-  stateRef.current = state;
+  const commit = useCallback((updater: (previous: TriageState) => TriageState) => {
+    const next = updater(stateRef.current);
+    stateRef.current = next;
+    setState(next);
+  }, []);
   const generation = useRef(0);
   const isLoading = useRef(false);
 
@@ -107,7 +119,7 @@ export function useTriage(
 
   const open = useCallback(
     async (id: number) => {
-      setState((s) => ({
+      commit((s) => ({
         ...s,
         selectedId: id,
         lead: null,
@@ -122,12 +134,12 @@ export function useTriage(
         api.listDuplicates(id) as Promise<Duplicate[]>,
       ]);
       if (stateRef.current.selectedId !== id) return;
-      setState((s) => ({ ...s, lead, dossier, duplicates }));
+      commit((s) => ({ ...s, lead, dossier, duplicates }));
       try {
         const source = (await api.getSource(id)) as Source;
-        if (stateRef.current.selectedId === id) setState((s) => ({ ...s, source, sourceError: null }));
+        if (stateRef.current.selectedId === id) commit((s) => ({ ...s, source, sourceError: null }));
       } catch (error) {
-        if (stateRef.current.selectedId === id) setState((s) => ({ ...s, sourceError: error }));
+        if (stateRef.current.selectedId === id) commit((s) => ({ ...s, sourceError: error }));
       }
     },
     [api],
@@ -140,7 +152,7 @@ export function useTriage(
         hidden: Record<string, number>;
       };
       if (mine !== generation.current) return;
-      setState((s) => ({ ...s, total, hidden }));
+      commit((s) => ({ ...s, total, hidden }));
     },
     [api, countParams],
   );
@@ -158,7 +170,7 @@ export function useTriage(
       if (mine !== generation.current) return;
       const isDone = rows.length < QUEUE_PAGE;
       const openFirst = stateRef.current.selectedId === null && stateRef.current.items.length === 0 && rows.length > 0;
-      setState((s) => ({ ...s, items: [...s.items, ...rows], isDone }));
+      commit((s) => ({ ...s, items: [...s.items, ...rows], isDone }));
       if (openFirst) await open(rows[0].id);
     },
     [api, countParams, open],
@@ -167,23 +179,23 @@ export function useTriage(
   const reload = useCallback(async () => {
     const mine = ++generation.current;
     isLoading.current = false;
-    setState((s) => ({ ...s, items: [], isDone: false }));
+    commit((s) => ({ ...s, items: [], isDone: false }));
     await Promise.all([loadMore(mine), refreshCounts(mine)]);
   }, [loadMore, refreshCounts]);
 
   const setLang = useCallback(
     async (lang: string) => {
-      setState((s) => ({ ...s, lang }));
+      commit((s) => ({ ...s, lang }));
       if (stateRef.current.selectedId === null) return;
       const dossier = (await api.getDossier(stateRef.current.selectedId, lang)) as DossierData;
-      setState((s) => ({ ...s, dossier }));
+      commit((s) => ({ ...s, dossier }));
     },
     [api],
   );
 
   const setFilter = useCallback(
     async (key: string, value: string) => {
-      setState((s) => ({ ...s, filters: { ...s.filters, [key]: value }, selectedId: null }));
+      commit((s) => ({ ...s, filters: { ...s.filters, [key]: value }, selectedId: null }));
       await reload();
     },
     [reload],
@@ -191,7 +203,7 @@ export function useTriage(
 
   const setMask = useCallback(
     async (key: string, isOn: boolean) => {
-      setState((s) => ({ ...s, masks: { ...s.masks, [key]: isOn }, selectedId: null }));
+      commit((s) => ({ ...s, masks: { ...s.masks, [key]: isOn }, selectedId: null }));
       await reload();
     },
     [reload],
@@ -213,7 +225,7 @@ export function useTriage(
       const row = stateRef.current.items.find((r) => r.id === id);
       if (!row) return;
       const detail = (await api.getLead(id)) as { human_score?: string | null };
-      setState((s) => ({
+      commit((s) => ({
         ...s,
         items: s.items.map((r) => (r.id === id ? { ...r, human_score: detail.human_score } : r)),
       }));
@@ -229,16 +241,16 @@ export function useTriage(
         ? { score: stateRef.current.lead.human_score ?? null, note: stateRef.current.lead.human_note ?? null }
         : null;
       await api.setHuman(id, { human_score: score, human_note: note });
-      setState((s) => ({ ...s, lastDecision: { id, before } }));
+      commit((s) => ({ ...s, lastDecision: { id, before } }));
       if (stateRef.current.masks.showReviewed) {
         await refreshRow(id);
         await open(id);
         return;
       }
       const next = nextAfter(id);
-      setState((s) => ({ ...s, items: s.items.filter((row) => row.id !== id), total: Math.max(0, s.total - 1) }));
+      commit((s) => ({ ...s, items: s.items.filter((row) => row.id !== id), total: Math.max(0, s.total - 1) }));
       if (next === null) {
-        setState((s) => ({ ...s, selectedId: null, lead: null }));
+        commit((s) => ({ ...s, selectedId: null, lead: null }));
         return;
       }
       await open(next);
@@ -249,13 +261,13 @@ export function useTriage(
   const undo = useCallback(async () => {
     const last = stateRef.current.lastDecision;
     if (!last) return;
-    setState((s) => ({ ...s, lastDecision: null }));
+    commit((s) => ({ ...s, lastDecision: null }));
     if (last.before?.score) {
       await api.setHuman(last.id, { human_score: last.before.score, human_note: last.before.note ?? "" });
     } else {
       await api.clearHuman(last.id);
     }
-    setState((s) => ({ ...s, selectedId: last.id }));
+    commit((s) => ({ ...s, selectedId: last.id }));
     await reload();
     await open(last.id);
   }, [api, reload, open]);
@@ -264,7 +276,7 @@ export function useTriage(
     const id = stateRef.current.selectedId;
     if (id === null) return;
     await api.clearHuman(id);
-    setState((s) => ({ ...s, lastDecision: null }));
+    commit((s) => ({ ...s, lastDecision: null }));
     await refreshRow(id);
     await open(id);
     await refreshCounts(generation.current);

@@ -21,7 +21,7 @@ import { StatsView } from "../views/Stats";
 import { CorpusView } from "../views/Corpus";
 import { TriageView } from "../views/Triage";
 import { JobsView } from "../views/Jobs";
-import { FsBrowser } from "../components/FsBrowser";
+import { ProjectTab } from "../components/ProjectTab";
 import { IMPACT_MODE, INVENTORY_MODE } from "../triage/constants";
 import type { Vocabulary } from "../triage/types";
 
@@ -173,93 +173,6 @@ function ParagoneTabs({
 }
 
 /**
- * Onglet dédié (pas un bandeau permanent au-dessus des autres onglets) pour
- * ouvrir un projet existant ou en créer un nouveau, via `FsBrowser` (filtré
- * aux dossiers seulement -- un projet n'est jamais un fichier). Ouvrir et
- * Créer sont deux gestes distincts (pas une case à cocher) : Ouvrir n'est
- * possible que sur un dossier qui a déjà un projet (`.paragone/findings.db`),
- * Créer prend un nom de nouveau dossier dans le dossier parcouru.
- */
-function ProjectTab({ rest, cwd, onChanged }: { rest: RestFn; cwd?: string; onChanged: () => void }) {
-  const [newName, setNewName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  const openAt = async (path: string) => {
-    setBusy(true);
-    try {
-      await rest(`/_cwd`, { method: "POST", body: { path, create: false } });
-      setError(null);
-      onChanged();
-    } catch (e) {
-      setError(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const createAt = async (path: string) => {
-    setBusy(true);
-    try {
-      await rest(`/_cwd`, { method: "POST", body: { path, create: true } });
-      setError(null);
-      setNewName("");
-      onChanged();
-    } catch (e) {
-      setError(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-3 h-full min-h-0">
-      <div className="flex items-center gap-2 text-(--ui-text-tertiary)">
-        <span>projet actif : </span>
-        <span>{cwd ?? "?"}</span>
-      </div>
-      <div className="flex-1 min-h-0 overflow-auto">
-        <FsBrowser
-          rest={rest}
-          ns=""
-          initialPath={cwd}
-          listClassName="flex-1 overflow-auto border border-(--ui-stroke-secondary) rounded"
-          actions={(listing) => (
-            <>
-              <div className="flex items-center gap-2">
-                <button type="button" disabled={busy || !listing.hasProject} onClick={() => openAt(listing.path)}>
-                  Ouvrir ce dossier
-                </button>
-                <span className="text-(--ui-text-tertiary) text-xs">
-                  {listing.hasProject ? "contient déjà un projet" : "pas encore de projet ici"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="nom du nouveau projet"
-                  className="flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-2 py-1"
-                />
-                <button
-                  type="button"
-                  disabled={busy || !newName}
-                  onClick={() => createAt(`${listing.path.replace(/\/+$/, "")}/${newName}`)}
-                >
-                  Créer ici
-                </button>
-              </div>
-            </>
-          )}
-        />
-      </div>
-      {error ? <pre className="text-red-400 whitespace-pre-wrap">{String(error)}</pre> : null}
-    </div>
-  );
-}
-
-/**
  * Contrôle de cycle de vie compact -- un seul bouton bascule (son libellé et
  * son action suivent `status.healthy`) plus une pastille verte/rouge, pensé
  * pour border droite d'une barre d'onglets plutôt qu'un bandeau à part. Le
@@ -338,7 +251,14 @@ function ParagonePage({ rest }: { rest: RestFn }) {
   };
 
   const api = useMemo(() => makeApi(paragoneFetcher(rest)), [rest]);
-  const statusControl = <StatusControl status={status ?? { id: "paragone", running: false, healthy: false, base_url: "" }} busy={busy} onStart={start} onStop={stop} />;
+  const statusControl = (
+    <StatusControl
+      status={status ?? { id: "paragone", running: false, healthy: false, base_url: "" }}
+      busy={busy}
+      onStart={start}
+      onStop={stop}
+    />
+  );
 
   return (
     <div className="paragone-skin flex h-full flex-col gap-3 p-4 text-sm">

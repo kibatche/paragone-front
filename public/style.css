@@ -293,6 +293,14 @@ kbd {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  /* La racine est focusable (tabIndex=-1) : les raccourcis clavier sont portés
+     par elle, pas par `document` -- cf ui/views/Triage.tsx. Le liseré dit
+     laquelle des vues est armée quand deux volets sont côte à côte (Hermes),
+     sans l'outline par défaut du navigateur. */
+  outline: none;
+}
+.t-root:focus-within {
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
 }
 .t-head {
   display: flex;
@@ -728,7 +736,13 @@ pre {
   margin: 0;
   font-family: var(--font-code);
 }
-pre.carrier,
+/* `.carrier` est posé soit sur un <pre> (repli sans coloration), soit sur un
+   <div> contenant le <pre class="shiki"> rendu par Shiki -- le sélecteur doit
+   donc viser la classe, pas la balise : stylé seulement sur `pre.carrier`, le
+   cas colorié (le normal) n'avait ni marge, ni cadre, ni gestion du
+   débordement, d'où un bloc collé au panneau du dessus et qui dépassait sur le
+   côté. */
+.carrier,
 pre.raw {
   margin-top: 8px;
   padding: 12px 16px;
@@ -736,6 +750,20 @@ pre.raw {
   border: 1px solid var(--rule);
   overflow: auto;
   font-size: 14px;
+}
+/* Le porteur du sink est court (une expression, pas un fichier) : il se replie
+   plutôt que de déborder. La vue de code complète (`.codeview`) garde elle son
+   `white-space: pre` et son défilement horizontal -- sa virtualisation suppose
+   des lignes de hauteur fixe. */
+.carrier pre,
+.carrier code,
+pre.carrier code {
+  margin: 0;
+  padding: 0;
+  /* Shiki pose une couleur de fond en style en-ligne sur son <pre>. */
+  background: none !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .chain {
   margin: 0;
@@ -974,6 +1002,129 @@ summary {
   flex: 1 1 auto;
   height: auto;
   resize: none;
+}
+
+/* ─── Modale et navigateur de dossiers (repris tels quels de obs,
+       public/style.css § Modale / Navigateur de dossiers ; accent khaki au
+       lieu de verdigris) ──────────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--khaki);
+  color: var(--on-accent);
+  font-weight: 700;
+  border-color: var(--khaki);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--fg);
+  border-color: var(--fg);
+}
+ul.plain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+ul.plain li {
+  padding: 3px 0;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 9, 6, 0.72);
+}
+.modal {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  padding: 28px 32px;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--rule-strong);
+  outline: none;
+}
+.modal h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-prose);
+  font-size: 24px;
+}
+/* Ces utilitaires servent dans la modale ET dans les onglets qui l'ouvrent
+   (l'en-tête « Projet actif » par exemple) : gardés globaux, contrairement à
+   obs où ils ne vivaient que dans la modale. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 20px 0 0;
+}
+.field .field-label {
+  color: var(--faint);
+  font-size: 14.5px;
+}
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.inline input[type="text"] {
+  flex: 1 1 auto;
+}
+.mono-path {
+  font-family: var(--font-code);
+  color: var(--muted);
+  word-break: break-all;
+}
+.mono-path.strong {
+  color: var(--khaki);
+  font-size: 16px;
+}
+.modal .hint,
+.folder-browser .hint {
+  font-size: 14px;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 24px 0 0;
+}
+.folder-browser {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+}
+.folder-browser .path {
+  color: var(--khaki);
+  margin: 0 0 8px;
+  font-family: var(--font-code);
+  word-break: break-all;
+}
+.folder-browser ul {
+  max-height: 240px;
+  overflow: auto;
+  margin: 0 0 10px;
+}
+.folder-browser .dir {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  font-family: var(--font-code);
+  color: var(--fg);
+}
+.folder-browser .dir:hover {
+  background: var(--panel-2);
+}
+.folder-browser .dir.up {
+  color: var(--muted);
+}
+.folder-browser .dir.file {
+  color: var(--muted);
 }
 
 /* ─── Pages ────────────────────────────────────────────────────────────────── */

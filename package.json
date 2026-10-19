@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "lint": "eslint public tests ui",
-    "format": "prettier --write public/src public/index.html public/style.css ui tests",
+    "lint": "eslint ui",
+    "format": "prettier --write public/index.html public/style.css ui",
     "build:standalone": "bun build ui/standalone/main.tsx --outfile=public/dist/app.js --format=esm --target=browser",
     "build:paragone": "sh -c 'bun run ui/hermes/build-skin.ts && bun build ui/hermes/plugin.tsx --outfile=\"${PARAGONE_PLUGIN_OUT:-hermes-plugin/desktop/plugin.js}\" --format=esm --target=browser -e react -e react/jsx-runtime -e @hermes/plugin-sdk'"
   },

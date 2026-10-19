@@ -9,7 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ParagoneApi } from "../api/client";
 import { formatDate, formatDuration } from "../format";
 import { Badge, ClsTag, ErrorMessage, KvGrid, Message, Section } from "../components/widgets";
-import { FsBrowser, type RestFn } from "../components/FsBrowser";
+import { FolderBrowser, type RestFn } from "../components/FolderBrowser";
+import { Modal } from "../components/Modal";
 import type { Vocabulary } from "../triage/types";
 
 const JOBS_POLL_MS = 1500;
@@ -157,32 +158,37 @@ function ConfigForm({
             placeholder="chemin absolu du dossier ou du fichier"
             className="flex-1"
           />
-          {fsRest && fsNs ? (
-            <button type="button" onClick={() => setBrowsing((b) => !b)}>
-              {browsing ? "Fermer" : "Parcourir"}
+          {fsRest && fsNs !== undefined ? (
+            <button type="button" onClick={() => setBrowsing(true)}>
+              Parcourir…
             </button>
           ) : null}
         </div>
       </label>
-      {browsing && fsRest && fsNs ? (
-        <FsBrowser
-          rest={fsRest}
-          ns={fsNs}
-          // Préselection sur le dossier du projet actif : le workflow de
-          // kbtch_ implique souvent un symlink vers jxscout au sein de
-          // l'arbo de travail, donc le point de départ le plus utile est le
-          // projet lui-même, pas la racine du système ou le home.
-          initialPath={analyze || cwd}
-          includeFiles
-          onPickFile={pick}
-          actions={(listing) => (
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => pick(listing.path)}>
-                Choisir ce dossier
-              </button>
-            </div>
-          )}
-        />
+      {browsing && fsRest && fsNs !== undefined ? (
+        <Modal
+          title="Dossier à analyser"
+          subtitle="un dossier de JS beautifié, ou un fichier isolé"
+          onClose={() => setBrowsing(false)}
+        >
+          <FolderBrowser
+            rest={fsRest}
+            ns={fsNs}
+            // Préselection sur le dossier du projet actif : le workflow de
+            // kbtch_ implique souvent un symlink vers jxscout au sein de
+            // l'arbo de travail, donc le point de départ le plus utile est le
+            // projet lui-même, pas la racine du système ou le home.
+            start={analyze || cwd}
+            includeFiles
+            onPickFile={pick}
+            onChoose={(listing) => pick(listing.path)}
+          />
+          <div className="actions">
+            <button type="button" onClick={() => setBrowsing(false)}>
+              Annuler
+            </button>
+          </div>
+        </Modal>
       ) : null}
       <div className="classes">
         {vocabulary.impactClasses.map((cls) => (

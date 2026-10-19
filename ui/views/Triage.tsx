@@ -1,12 +1,14 @@
 /**
  * views/Triage.tsx — Port React fidèle de `public/src/triage/view.js` +
  * `queue.js` : squelette (compteurs, filtres, masques, file, dossier),
- * raccourcis clavier (j/k/a/r/e/n/u/← →//, validés sans collision avec
- * les raccourcis globaux de Hermes en Phase 0 -- cf ISA, spike 2 : la vue
- * vit dans une page ROUTES_AREA, `$workspaceIsPage` désactive le
- * type-to-focus du composer).
+ * raccourcis clavier (j/k/a/r/e/n/u/← →//). Les raccourcis sont portés par la
+ * racine `.t-root` (focusable, tabIndex=-1), JAMAIS par `document` : dans le
+ * desktop Hermes la page du plugin reste montée pendant qu'un autre volet est
+ * actif (deux volets côte à côte), un écouteur global y volait les frappes et
+ * le focus. Il faut donc un focus explicite dans la vue pour les armer.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type { ParagoneApi } from "../api/client";
 import { priorityOf, sinkText, where } from "../format";
 import { Badge, ClsTag, ErrorMessage, Select } from "../components/widgets";
@@ -78,6 +80,7 @@ export function TriageView({
   mode = IMPACT_MODE,
   initialFilters,
   onFiltersChange,
+  autoFocus = false,
 }: {
   api: ParagoneApi;
   vocabulary: Vocabulary | null;
@@ -86,6 +89,13 @@ export function TriageView({
   initialFilters?: Record<string, string>;
   /** Appelé à chaque changement des filtres vivants -- l'appelant décide quoi en faire (persister dans l'URL en standalone, ignorer dans Hermes). */
   onFiltersChange?: (filters: Record<string, string>) => void;
+  /**
+   * Prendre le focus clavier dès le montage. Vrai seulement là où la vue
+   * possède toute la fenêtre (build autonome) ; FAUX dans le plugin Hermes,
+   * où le volet paragone peut être affiché côte à côte avec un autre volet :
+   * s'emparer du focus au montage y volerait les touches de l'autre volet.
+   */
+  autoFocus?: boolean;
 }) {
   const triage = useTriage(
     api,
@@ -98,6 +108,7 @@ export function TriageView({
   const codeHandleRef = useRef<CodeViewHandle | null>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const queueRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api
@@ -112,9 +123,11 @@ export function TriageView({
   }, [triage.state.filters]);
 
   useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+      const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable;
       const action = keyAction(event.key, {
         isTyping,
         hasModifier: event.ctrlKey || event.metaKey || event.altKey,
@@ -129,16 +142,44 @@ export function TriageView({
         undo: () => triage.undo(),
         note: () => noteRef.current?.focus(),
         search: () => searchRef.current?.focus(),
-        blur: () => target.blur(),
+        // Sortir du champ sans perdre les raccourcis : le focus revient à la
+        // racine de la vue, pas au <body> (où plus rien ne nous écouterait).
+        blur: () => {
+          target.blur();
+          root.focus();
+        },
         collapse: () => codeHandleRef.current?.collapse(),
         stepBack: () => codeHandleRef.current?.step(-1),
         stepForward: () => codeHandleRef.current?.step(1),
       };
       Promise.resolve(run[action.name]?.()).catch(setError);
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // Écouteur porté par la racine de la vue, JAMAIS par `document` : les
+    // touches ne nous parviennent que si le focus est réellement dans cette
+    // vue. Dans le desktop Hermes, cette page reste montée alors qu'un autre
+    // volet est actif (deux volets peuvent être côte à côte) ; un écouteur
+    // global y captait les frappes destinées à l'autre volet -- et pire,
+    // `note`/`search` y déplaçaient le focus vers paragone. Un composer
+    // contenteditable de l'hôte n'était même pas vu comme une saisie
+    // (tagName "DIV"), d'où le vol de touche pendant la frappe.
+    root.addEventListener("keydown", onKey);
+    return () => root.removeEventListener("keydown", onKey);
   }, [triage, mode]);
+
+  // Focus explicite : au montage seulement si l'appelant possède la fenêtre
+  // (`autoFocus`, build autonome). Sinon c'est un geste de l'utilisateur qui
+  // donne le focus -- un clic sur une zone non focusable de la vue le pose sur
+  // la racine, sans jamais le prendre à un autre volet.
+  useEffect(() => {
+    if (autoFocus) rootRef.current?.focus();
+  }, [autoFocus]);
+
+  const focusRootOnEmptyClick = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const root = rootRef.current;
+    if (!root) return;
+    const target = event.target as HTMLElement;
+    if (!target.closest("input, textarea, select, button, a, [tabindex]")) root.focus();
+  };
 
   useEffect(() => {
     const el = queueRef.current;
@@ -157,7 +198,7 @@ export function TriageView({
   const classes = summary && vocabulary ? mode.classesOf(vocabulary) : [];
 
   return (
-    <div className="t-root">
+    <div className="t-root" ref={rootRef} tabIndex={-1} onPointerDown={focusRootOnEmptyClick}>
       {mode.isJudged && summary ? (
         <div className="t-head">
           <div className="counters">
